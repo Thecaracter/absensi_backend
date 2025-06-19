@@ -83,7 +83,7 @@
                                 @endphp
                                 
                                 @forelse($pendingLeaves as $leave)
-                                    <a href="{{ route('admin.izin.show', $leave) }}" 
+                                    <a href="{{ route('admin.izin.index', $leave) }}" 
                                        class="block p-3 hover:bg-gray-50 border-b border-gray-100">
                                         <div class="flex items-start space-x-3">
                                             <div class="flex-shrink-0">
@@ -102,7 +102,7 @@
                                     </a>
                                 @empty
                                     @forelse($pendingAttendances as $attendance)
-                                        <a href="{{ route('admin.absensi.show', $attendance) }}" 
+                                        <a href="{{ route('admin.absensi.index', $attendance) }}" 
                                            class="block p-3 hover:bg-gray-50 border-b border-gray-100">
                                             <div class="flex items-start space-x-3">
                                                 <div class="flex-shrink-0">
