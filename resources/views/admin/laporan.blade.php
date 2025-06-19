@@ -1,6 +1,8 @@
 @extends('layouts.app')
 
 @section('title', 'Laporan')
+@section('page-title', 'Laporan')
+@section('page-subtitle', 'Analisis dan laporan data kehadiran karyawan')
 
 @push('styles')
 <style>
@@ -201,8 +203,8 @@
                     <div class="flex items-center justify-between p-4 bg-green-50 rounded-lg">
                         <div>
                             <p class="text-sm font-medium text-green-800">Kehadiran Tertinggi</p>
-                            <p class="text-2xl font-bold text-green-900">95.2%</p>
-                            <p class="text-xs text-green-600">Minggu ini</p>
+                            <p class="text-2xl font-bold text-green-900">{{ number_format($summaryStats['rata_rata_kehadiran'] ?? 0, 1) }}%</p>
+                            <p class="text-xs text-green-600">Bulan ini</p>
                         </div>
                         <div class="text-green-500">
                             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -213,9 +215,9 @@
 
                     <div class="flex items-center justify-between p-4 bg-yellow-50 rounded-lg">
                         <div>
-                            <p class="text-sm font-medium text-yellow-800">Rata-rata Keterlambatan</p>
-                            <p class="text-2xl font-bold text-yellow-900">12 menit</p>
-                            <p class="text-xs text-yellow-600">Per hari</p>
+                            <p class="text-sm font-medium text-yellow-800">Total Izin</p>
+                            <p class="text-2xl font-bold text-yellow-900">{{ $summaryStats['izin_bulan_ini'] ?? 0 }}</p>
+                            <p class="text-xs text-yellow-600">Bulan ini</p>
                         </div>
                         <div class="text-yellow-500">
                             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -226,13 +228,13 @@
 
                     <div class="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
                         <div>
-                            <p class="text-sm font-medium text-blue-800">Total Jam Kerja</p>
-                            <p class="text-2xl font-bold text-blue-900">1,247</p>
-                            <p class="text-xs text-blue-600">Bulan ini</p>
+                            <p class="text-sm font-medium text-blue-800">Total Karyawan</p>
+                            <p class="text-2xl font-bold text-blue-900">{{ $summaryStats['total_karyawan'] ?? 0 }}</p>
+                            <p class="text-xs text-blue-600">Aktif</p>
                         </div>
                         <div class="text-blue-500">
                             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
                             </svg>
                         </div>
                     </div>
@@ -298,7 +300,7 @@
             <!-- Filter Section -->
             <div class="p-6 border-b border-gray-200">
                 <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-                    <h3 class="text-lg font-medium text-gray-900">Laporan Absensi</h3>
+                    <h3 class="text-lg font-medium text-gray-900">Laporan Absensi - Ringkasan per Karyawan</h3>
                     <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
                         <input type="month" id="absensi-periode" value="{{ now()->format('Y-m') }}"
                                class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
@@ -331,85 +333,65 @@
                     </div>
                     <div class="text-center">
                         <div class="text-2xl font-bold text-green-600" id="total-hadir">{{ $stats['total_hadir'] ?? 0 }}</div>
-                        <div class="text-sm text-gray-600">Hadir</div>
+                        <div class="text-sm text-gray-600">Total Hadir</div>
                     </div>
                     <div class="text-center">
                         <div class="text-2xl font-bold text-yellow-600" id="total-terlambat">{{ $stats['total_terlambat'] ?? 0 }}</div>
-                        <div class="text-sm text-gray-600">Terlambat</div>
+                        <div class="text-sm text-gray-600">Total Terlambat</div>
                     </div>
                     <div class="text-center">
                         <div class="text-2xl font-bold text-red-600" id="total-tidak-hadir">{{ $stats['total_tidak_hadir'] ?? 0 }}</div>
-                        <div class="text-sm text-gray-600">Tidak Hadir</div>
+                        <div class="text-sm text-gray-600">Total Tidak Hadir</div>
                     </div>
                     <div class="text-center">
                         <div class="text-2xl font-bold text-blue-600" id="total-izin">{{ $stats['total_izin'] ?? 0 }}</div>
-                        <div class="text-sm text-gray-600">Izin</div>
+                        <div class="text-sm text-gray-600">Total Izin</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Table Section -->
+            <!-- Table Section - UPDATED untuk ringkasan per karyawan -->
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Karyawan</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Shift</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jam Masuk</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jam Keluar</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Terlambat</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Hadir</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Terlambat</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Tidak Hadir</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Izin</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tingkat Kehadiran</th>
                         </tr>
                     </thead>
                     <tbody id="absensi-table-body" class="bg-white divide-y divide-gray-200">
-                        @foreach($absensi ?? [] as $attendance)
-                            <tr>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {{ $attendance->tanggal_absen->format('d/m/Y') }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="flex items-center">
-                                        <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center mr-3">
-                                            @if($attendance->user->foto_url)
-                                                <img src="{{ $attendance->user->foto_url }}" class="w-8 h-8 rounded-full object-cover">
-                                            @else
-                                                <span class="text-xs font-medium text-gray-600">{{ substr($attendance->user->name, 0, 2) }}</span>
-                                            @endif
-                                        </div>
-                                        <div>
-                                            <div class="text-sm font-medium text-gray-900">{{ $attendance->user->name }}</div>
-                                            <div class="text-sm text-gray-500">{{ $attendance->user->id_karyawan }}</div>
-                                        </div>
+                        @foreach($absensi as $emp)
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center mr-3">
+                                        <span class="text-xs font-medium text-gray-600">{{ substr($emp['karyawan'], 0, 2) }}</span>
                                     </div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {{ $attendance->shift->nama }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {{ $attendance->jam_masuk ? \Carbon\Carbon::parse($attendance->jam_masuk)->format('H:i') : '-' }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {{ $attendance->jam_keluar ? \Carbon\Carbon::parse($attendance->jam_keluar)->format('H:i') : '-' }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    @php
-                                        $badgeClass = match($attendance->status_absen) {
-                                            'hadir' => 'bg-green-100 text-green-800',
-                                            'terlambat' => 'bg-yellow-100 text-yellow-800',
-                                            'tidak_hadir' => 'bg-red-100 text-red-800',
-                                            'izin' => 'bg-blue-100 text-blue-800',
-                                            default => 'bg-gray-100 text-gray-800'
-                                        };
-                                    @endphp
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $badgeClass }}">
-                                        {{ $attendance->getStatusAbsenText() }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {{ $attendance->menit_terlambat > 0 ? $attendance->menit_terlambat . ' menit' : '-' }}
-                                </td>
-                            </tr>
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900">{{ $emp['karyawan'] }}</div>
+                                        <div class="text-sm text-gray-500">{{ $emp['id_karyawan'] }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $emp['shift'] }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">{{ $emp['total_hadir'] }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-yellow-600">{{ $emp['total_terlambat'] }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">{{ $emp['total_tidak_hadir'] }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">{{ $emp['total_izin'] }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div class="w-full bg-gray-200 rounded-full h-2 mr-2">
+                                        <div class="bg-green-600 h-2 rounded-full" style="width: {{ $emp['tingkat_kehadiran'] }}%"></div>
+                                    </div>
+                                    <span class="text-sm font-medium text-gray-900">{{ $emp['tingkat_kehadiran'] }}%</span>
+                                </div>
+                            </td>
+                        </tr>
                         @endforeach
                     </tbody>
                 </table>
@@ -419,12 +401,9 @@
             <div class="px-6 py-4 border-t border-gray-200">
                 <div class="flex items-center justify-between">
                     <p class="text-sm text-gray-700">
-                        Menampilkan data absensi
+                        Menampilkan {{ count($absensi) }} karyawan untuk bulan {{ now()->format('F Y') }}
                     </p>
-                    <button onclick="openDetailModal('absensi')" 
-                            class="text-sm text-blue-600 hover:text-blue-800">
-                        Lihat Detail
-                    </button>
+                    
                 </div>
             </div>
         </div>
@@ -509,53 +488,40 @@
                         </tr>
                     </thead>
                     <tbody id="izin-table-body" class="bg-white divide-y divide-gray-200">
-                        @foreach($izin ?? [] as $leave)
-                            <tr>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {{ $leave->created_at->format('d/m/Y') }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="flex items-center">
-                                        <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center mr-3">
-                                            @if($leave->user->foto_url)
-                                                <img src="{{ $leave->user->foto_url }}" class="w-8 h-8 rounded-full object-cover">
-                                            @else
-                                                <span class="text-xs font-medium text-gray-600">{{ substr($leave->user->name, 0, 2) }}</span>
-                                            @endif
-                                        </div>
-                                        <div>
-                                            <div class="text-sm font-medium text-gray-900">{{ $leave->user->name }}</div>
-                                            <div class="text-sm text-gray-500">{{ $leave->user->id_karyawan }}</div>
-                                        </div>
+                        @foreach($izin as $leave)
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $leave->created_at->format('d/m/Y') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center mr-3">
+                                        <span class="text-xs font-medium text-gray-600">{{ substr($leave->user->name, 0, 2) }}</span>
                                     </div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {{ $leave->getJenisIzinText() }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {{ $leave->tanggal_mulai->format('d/m/Y') }} - {{ $leave->tanggal_selesai->format('d/m/Y') }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {{ $leave->total_hari }} hari
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    @php
-                                        $badgeClass = match($leave->status) {
-                                            'menunggu' => 'bg-yellow-100 text-yellow-800',
-                                            'disetujui' => 'bg-green-100 text-green-800',
-                                            'ditolak' => 'bg-red-100 text-red-800',
-                                            default => 'bg-gray-100 text-gray-800'
-                                        };
-                                    @endphp
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $badgeClass }}">
-                                        {{ $leave->getStatusText() }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    <button onclick="viewLeaveDetail({{ $leave->id }})" 
-                                            class="text-blue-600 hover:text-blue-900">Detail</button>
-                                </td>
-                            </tr>
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900">{{ $leave->user->name }}</div>
+                                        <div class="text-sm text-gray-500">{{ $leave->user->id_karyawan }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $leave->getJenisIzinText() }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $leave->tanggal_mulai->format('d/m/Y') }} - {{ $leave->tanggal_selesai->format('d/m/Y') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $leave->total_hari }} hari</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                @php
+                                    $statusClass = match($leave->status) {
+                                        'menunggu' => 'bg-yellow-100 text-yellow-800',
+                                        'disetujui' => 'bg-green-100 text-green-800',
+                                        'ditolak' => 'bg-red-100 text-red-800',
+                                        default => 'bg-gray-100 text-gray-800'
+                                    };
+                                @endphp
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusClass }}">
+                                    {{ $leave->getStatusText() }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <button onclick="viewLeaveDetail({{ $leave->id }})" class="text-blue-600 hover:text-blue-900">Detail</button>
+                            </td>
+                        </tr>
                         @endforeach
                     </tbody>
                 </table>
@@ -565,7 +531,7 @@
             <div class="px-6 py-4 border-t border-gray-200">
                 <div class="flex items-center justify-between">
                     <p class="text-sm text-gray-700">
-                        Menampilkan data izin
+                        Menampilkan {{ count($izin) }} pengajuan izin untuk bulan {{ now()->format('F Y') }}
                     </p>
                     <button onclick="openDetailModal('izin')" 
                             class="text-sm text-blue-600 hover:text-blue-800">
@@ -623,63 +589,58 @@
             <!-- Performance Cards -->
             <div class="p-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="kinerja-cards">
-                    @foreach($karyawan ?? [] as $employee)
-                        <div class="bg-white border rounded-lg p-6 hover:shadow-md transition-shadow">
-                            <div class="flex items-center justify-between mb-4">
-                                <div class="flex items-center">
-                                    <div class="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center mr-3">
-                                        @if($employee->foto_url)
-                                            <img src="{{ $employee->foto_url }}" class="w-10 h-10 rounded-full object-cover">
-                                        @else
-                                            <span class="text-sm font-medium text-gray-600">{{ substr($employee->name, 0, 2) }}</span>
-                                        @endif
-                                    </div>
-                                    <div>
-                                        <h4 class="text-sm font-medium text-gray-900">{{ $employee->name }}</h4>
-                                        <p class="text-xs text-gray-500">{{ $employee->id_karyawan }}</p>
-                                    </div>
+                    @foreach($karyawanKinerja as $emp)
+                    <div class="bg-white border rounded-lg p-6 hover:shadow-md transition-shadow">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center mr-3">
+                                    <span class="text-sm font-medium text-gray-600">{{ substr($emp->name, 0, 2) }}</span>
                                 </div>
-                                <div class="performance-meter" style="--percentage: {{ $employee->tingkat_kehadiran ?? 0 }}">
-                                    <div class="performance-text">{{ $employee->tingkat_kehadiran ?? 0 }}%</div>
+                                <div>
+                                    <h4 class="text-sm font-medium text-gray-900">{{ $emp->name }}</h4>
+                                    <p class="text-xs text-gray-500">{{ $emp->id_karyawan }}</p>
                                 </div>
                             </div>
-                            
-                            <div class="space-y-2">
-                                <div class="flex justify-between text-sm">
-                                    <span class="text-gray-600">Hadir:</span>
-                                    <span class="font-medium">{{ $employee->total_hadir ?? 0 }} hari</span>
-                                </div>
-                                <div class="flex justify-between text-sm">
-                                    <span class="text-gray-600">Terlambat:</span>
-                                    <span class="font-medium">{{ $employee->total_terlambat ?? 0 }} hari</span>
-                                </div>
-                                <div class="flex justify-between text-sm">
-                                    <span class="text-gray-600">Tidak Hadir:</span>
-                                    <span class="font-medium">{{ $employee->total_tidak_hadir ?? 0 }} hari</span>
-                                </div>
+                            <div class="performance-meter" style="--percentage: {{ $emp->tingkat_kehadiran }}">
+                                <div class="performance-text">{{ $emp->tingkat_kehadiran }}%</div>
                             </div>
-                            
-                            <div class="mt-4 pt-4 border-t border-gray-200">
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Hadir:</span>
+                                <span class="font-medium">{{ $emp->total_hadir }} hari</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Terlambat:</span>
+                                <span class="font-medium">{{ $emp->total_terlambat }} hari</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Tidak Hadir:</span>
+                                <span class="font-medium">{{ $emp->total_tidak_hadir }} hari</span>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 pt-4 border-t border-gray-200">
+                            <div class="flex items-center justify-between">
                                 @php
-                                    $ratingClass = match($employee->rating ?? 'Average') {
+                                    $ratingClass = match($emp->rating) {
                                         'Excellent' => 'bg-green-100 text-green-800',
-                                        'Good' => 'bg-blue-100 text-blue-800',
+                                        'Good' => 'bg-blue-100 text-blue-800', 
                                         'Average' => 'bg-yellow-100 text-yellow-800',
                                         'Poor' => 'bg-red-100 text-red-800',
                                         default => 'bg-gray-100 text-gray-800'
                                     };
                                 @endphp
-                                <div class="flex items-center justify-between">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $ratingClass }}">
-                                        {{ $employee->rating ?? 'Average' }}
-                                    </span>
-                                    <button onclick="viewEmployeeDetail({{ $employee->id }})" 
-                                            class="text-sm text-blue-600 hover:text-blue-800">
-                                        Detail
-                                    </button>
-                                </div>
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $ratingClass }}">
+                                    {{ $emp->rating }}
+                                </span>
+                                <button onclick="viewEmployeeDetail({{ $emp->id }})" class="text-sm text-blue-600 hover:text-blue-800">
+                                    Detail
+                                </button>
                             </div>
                         </div>
+                    </div>
                     @endforeach
                 </div>
             </div>
@@ -785,15 +746,6 @@ function showTab(tabName) {
     activeTab.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
     
     currentTab = tabName;
-    
-    // Load data for specific tabs
-    if (tabName === 'absensi' && !document.getElementById('absensi-table-body').children.length) {
-        loadAbsensiData();
-    } else if (tabName === 'izin' && !document.getElementById('izin-table-body').children.length) {
-        loadIzinData();
-    } else if (tabName === 'kinerja' && !document.getElementById('kinerja-cards').children.length) {
-        loadKinerjaData();
-    }
 }
 
 // Chart initialization
@@ -837,7 +789,7 @@ function initChart() {
     });
 }
 
-// Load data functions
+// Load data functions - UPDATED untuk controller baru
 function loadAbsensiData() {
     const periode = document.getElementById('absensi-periode').value;
     const userId = document.getElementById('absensi-karyawan').value;
@@ -849,13 +801,13 @@ function loadAbsensiData() {
     `;
     
     const params = new URLSearchParams({
-        bulan: periode,
-        ajax: 1
+        bulan: periode
     });
     
     if (userId) params.append('user_id', userId);
     if (shiftId) params.append('shift_id', shiftId);
     
+    // UPDATED: Controller langsung return JSON
     fetch(`{{ route('admin.laporan.absensi') }}?${params}`)
         .then(response => response.json())
         .then(data => {
@@ -882,8 +834,7 @@ function loadIzinData() {
     `;
     
     const params = new URLSearchParams({
-        bulan: periode,
-        ajax: 1
+        bulan: periode
     });
     
     if (userId) params.append('user_id', userId);
@@ -913,8 +864,7 @@ function loadKinerjaData() {
     `;
     
     const params = new URLSearchParams({
-        bulan: periode,
-        ajax: 1
+        bulan: periode
     });
     
     fetch(`{{ route('admin.laporan.kinerja') }}?${params}`)
@@ -931,7 +881,7 @@ function loadKinerjaData() {
         });
 }
 
-// Update functions
+// Update functions - UPDATED untuk data baru
 function updateAbsensiStats(stats) {
     document.getElementById('total-hari-kerja').textContent = stats.total_hari_kerja;
     document.getElementById('total-hadir').textContent = stats.total_hadir;
@@ -940,6 +890,7 @@ function updateAbsensiStats(stats) {
     document.getElementById('total-izin').textContent = stats.total_izin;
 }
 
+// UPDATED: updateAbsensiTable untuk data ringkasan per karyawan
 function updateAbsensiTable(data) {
     const tbody = document.getElementById('absensi-table-body');
     
@@ -950,29 +901,32 @@ function updateAbsensiTable(data) {
         return;
     }
     
-    tbody.innerHTML = data.map(item => `
+    tbody.innerHTML = data.map(emp => `
         <tr>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.tanggal}</td>
             <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                     <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center mr-3">
-                        <span class="text-xs font-medium text-gray-600">${item.karyawan.substring(0, 2)}</span>
+                        <span class="text-xs font-medium text-gray-600">${emp.karyawan.substring(0, 2)}</span>
                     </div>
                     <div>
-                        <div class="text-sm font-medium text-gray-900">${item.karyawan}</div>
-                        <div class="text-sm text-gray-500">${item.id_karyawan}</div>
+                        <div class="text-sm font-medium text-gray-900">${emp.karyawan}</div>
+                        <div class="text-sm text-gray-500">${emp.id_karyawan}</div>
                     </div>
                 </div>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.shift}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.jam_masuk || '-'}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.jam_keluar || '-'}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${emp.shift}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">${emp.total_hadir}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-yellow-600">${emp.total_terlambat}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">${emp.total_tidak_hadir}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">${emp.total_izin}</td>
             <td class="px-6 py-4 whitespace-nowrap">
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${item.status_badge_class}">
-                    ${item.status}
-                </span>
+                <div class="flex items-center">
+                    <div class="w-full bg-gray-200 rounded-full h-2 mr-2">
+                        <div class="bg-green-600 h-2 rounded-full" style="width: ${emp.tingkat_kehadiran}%"></div>
+                    </div>
+                    <span class="text-sm font-medium text-gray-900">${emp.tingkat_kehadiran}%</span>
+                </div>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.menit_terlambat > 0 ? item.menit_terlambat + ' menit' : '-'}</td>
         </tr>
     `).join('');
 }
@@ -1097,18 +1051,7 @@ function updateKinerjaCards(data) {
     }).join('');
 }
 
-// Modal functions
-function openDetailModal(type) {
-    document.getElementById('detailModal').classList.remove('hidden');
-    document.getElementById('detailModalTitle').textContent = `Detail ${type.charAt(0).toUpperCase() + type.slice(1)}`;
-    
-    // Load detail data based on type
-    loadDetailData(type);
-}
 
-function closeDetailModal() {
-    document.getElementById('detailModal').classList.add('hidden');
-}
 
 function loadDetailData(type) {
     const content = document.getElementById('detailModalContent');
@@ -1134,7 +1077,6 @@ function loadDetailData(type) {
                 content.innerHTML = '<div class="text-center py-8 text-red-600">Gagal memuat detail data</div>';
             });
     }
-    // Add similar handling for izin and kinerja
 }
 
 function displayDetailTable(data, type) {
@@ -1149,15 +1091,15 @@ function displayDetailTable(data, type) {
     let rows = [];
     
     if (type === 'absensi') {
-        headers = ['Tanggal', 'Karyawan', 'Shift', 'Jam Masuk', 'Jam Keluar', 'Status', 'Terlambat'];
+        headers = ['Karyawan', 'Shift', 'Total Hadir', 'Total Terlambat', 'Total Tidak Hadir', 'Total Izin', 'Tingkat Kehadiran'];
         rows = data.map(item => [
-            item.tanggal,
             item.karyawan,
             item.shift,
-            item.jam_masuk || '-',
-            item.jam_keluar || '-',
-            item.status,
-            item.menit_terlambat > 0 ? item.menit_terlambat + ' menit' : '-'
+            item.total_hadir,
+            item.total_terlambat,
+            item.total_tidak_hadir,
+            item.total_izin,
+            item.tingkat_kehadiran + '%'
         ]);
     }
     
@@ -1195,23 +1137,16 @@ function closeExportModal() {
 
 // Detail view functions
 function viewLeaveDetail(id) {
-    // Implementation for viewing leave detail
     console.log('View leave detail:', id);
 }
 
 function viewEmployeeDetail(id) {
-    // Implementation for viewing employee detail
     console.log('View employee detail:', id);
 }
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     initChart();
-    
-    // Load initial data for dashboard
-    if (currentTab === 'dashboard') {
-        // Chart is already initialized with server data
-    }
 });
 
 // Close modals when clicking outside

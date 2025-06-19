@@ -136,12 +136,27 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     // Laporan Management
     Route::prefix('laporan')->name('laporan.')->group(function () {
+
+        // HANYA SATU VIEW UTAMA
         Route::get('/', [LaporanController::class, 'index'])->name('index');
+
+        // AJAX routes untuk data tabs (return JSON only)
         Route::get('/absensi', [LaporanController::class, 'absensi'])->name('absensi');
         Route::get('/izin', [LaporanController::class, 'izin'])->name('izin');
         Route::get('/kinerja', [LaporanController::class, 'kinerja'])->name('kinerja');
 
-        // Export routes
+        // AJAX Detail routes untuk modal (return JSON)
+        Route::get('/absensi/detail', [LaporanController::class, 'getAbsensiDetail'])->name('absensi.detail');
+        Route::get('/izin/detail', [LaporanController::class, 'getIzinDetail'])->name('izin.detail');
+        Route::get('/kinerja/detail', [LaporanController::class, 'getKinerjaDetail'])->name('kinerja.detail');
+
+        // Dashboard stats untuk AJAX
+        Route::get('/dashboard/stats', [LaporanController::class, 'getDashboardStats'])->name('dashboard.stats');
+
+        // MAIN export method (digunakan di view)
+        Route::post('/export', [LaporanController::class, 'export'])->name('export');
+
+        // Individual export routes (backup/alternative)
         Route::post('/absensi/export', [LaporanController::class, 'exportAbsensi'])->name('absensi.export');
         Route::post('/izin/export', [LaporanController::class, 'exportIzin'])->name('izin.export');
         Route::post('/kinerja/export', [LaporanController::class, 'exportKinerja'])->name('kinerja.export');

@@ -35,11 +35,11 @@ class JadwalController extends Controller
         }
         $karyawan = $query->orderBy('name')->get();
 
-        // Generate calendar weeks for monthly view
+        // Generate calendar weeks for monthly view - ALWAYS INCLUDE ALL DAYS
         $weeks = [];
         if ($view === 'monthly') {
-            $startOfMonth = $monthDate->copy()->startOfMonth()->startOfWeek();
-            $endOfMonth = $monthDate->copy()->endOfMonth()->endOfWeek();
+            $startOfMonth = $monthDate->copy()->startOfMonth()->startOfWeek(Carbon::SUNDAY); // Start from Sunday
+            $endOfMonth = $monthDate->copy()->endOfMonth()->endOfWeek(Carbon::SATURDAY); // End at Saturday
             $currentDate = $startOfMonth->copy();
 
             while ($currentDate <= $endOfMonth) {
@@ -50,6 +50,8 @@ class JadwalController extends Controller
                         'is_current_month' => $currentDate->month === $monthDate->month,
                         'is_today' => $currentDate->isToday(),
                         'is_weekend' => $currentDate->isWeekend(),
+                        'day_name' => $currentDate->format('l'), // Full day name
+                        'day_short' => $currentDate->format('D'), // Short day name
                     ];
                     $currentDate->addDay();
                 }
@@ -57,7 +59,7 @@ class JadwalController extends Controller
             }
         }
 
-        // Get attendances for monthly view
+        // Get attendances for monthly view - INCLUDE ALL DATES (even weekends for holidays/special cases)
         $startDate = $monthDate->copy()->startOfMonth();
         $endDate = $monthDate->copy()->endOfMonth();
 
@@ -71,7 +73,7 @@ class JadwalController extends Controller
         // Debug log
         Log::info("Attendance Query Debug: Start={$startDate}, End={$endDate}, Count={$attendances->count()}");
 
-        // Prepare shift summary for each day (monthly view)
+        // Prepare shift summary for each day (monthly view) - INCLUDING WEEKENDS
         $daily_shift_summary = [];
         if ($view === 'monthly') {
             foreach ($weeks as $week) {
@@ -85,22 +87,27 @@ class JadwalController extends Controller
 
                     $summary = [
                         'total' => $dayAttendances->count(),
-                        'shifts' => []
+                        'shifts' => [],
+                        'is_weekend' => $day['is_weekend'],
+                        'day_name' => $day['day_short']
                     ];
 
-                    // Group by shift for this day
-                    $shiftGroups = $dayAttendances->groupBy('shift_id');
-                    foreach ($shiftGroups as $shiftId => $shiftAttendances) {
-                        $firstAttendance = $shiftAttendances->first();
-                        if ($firstAttendance && $firstAttendance->shift) {
-                            $shift = $firstAttendance->shift;
-                            $summary['shifts'][] = [
-                                'id' => $shiftId,
-                                'nama' => $shift->nama,
-                                'count' => $shiftAttendances->count(),
-                                'jam_masuk' => $shift->jam_masuk,
-                                'jam_keluar' => $shift->jam_keluar,
-                            ];
+                    // Only process shifts if it's not a weekend OR if there are special attendances on weekends
+                    if (!$day['is_weekend'] || $dayAttendances->count() > 0) {
+                        // Group by shift for this day
+                        $shiftGroups = $dayAttendances->groupBy('shift_id');
+                        foreach ($shiftGroups as $shiftId => $shiftAttendances) {
+                            $firstAttendance = $shiftAttendances->first();
+                            if ($firstAttendance && $firstAttendance->shift) {
+                                $shift = $firstAttendance->shift;
+                                $summary['shifts'][] = [
+                                    'id' => $shiftId,
+                                    'nama' => $shift->nama,
+                                    'count' => $shiftAttendances->count(),
+                                    'jam_masuk' => $shift->jam_masuk,
+                                    'jam_keluar' => $shift->jam_keluar,
+                                ];
+                            }
                         }
                     }
 
@@ -123,6 +130,7 @@ class JadwalController extends Controller
                     'terlambat' => $dayAttendances->where('status_absen', 'terlambat')->count(),
                     'tidak_hadir' => $dayAttendances->where('status_absen', 'tidak_hadir')->count(),
                     'izin' => $dayAttendances->where('status_absen', 'izin')->count(),
+                    'is_weekend' => $summary['is_weekend']
                 ]);
             }
         }
@@ -167,7 +175,7 @@ class JadwalController extends Controller
     }
 
     /**
-     * Get detailed schedule for specific date (for modal)
+     * Get detailed schedule for specific date (for modal) - INCLUDE WEEKENDS
      */
     public function getDateScheduleDetail(Request $request)
     {
@@ -176,11 +184,29 @@ class JadwalController extends Controller
         ]);
 
         $date = $request->date;
+        $dateCarbon = Carbon::parse($date);
+
+        // Check if it's weekend
+        $isWeekend = $dateCarbon->isWeekend();
 
         // Get all attendances for this date
         $attendances = Attendance::with(['user', 'shift'])
             ->whereDate('tanggal_absen', $date)
             ->get();
+
+        // If it's weekend and no special attendance, return weekend info
+        if ($isWeekend && $attendances->count() === 0) {
+            return response()->json([
+                'success' => true,
+                'date' => $dateCarbon->format('d F Y'),
+                'date_formatted' => $dateCarbon->format('l, d F Y'),
+                'is_weekend' => true,
+                'day_name' => $dateCarbon->format('l'),
+                'total_employees' => 0,
+                'shifts' => [],
+                'message' => 'Hari libur - tidak ada jadwal kerja'
+            ]);
+        }
 
         // Group by shift
         $shiftGroups = $attendances->groupBy('shift_id');
@@ -215,15 +241,17 @@ class JadwalController extends Controller
 
         return response()->json([
             'success' => true,
-            'date' => Carbon::parse($date)->format('d F Y'),
-            'date_formatted' => Carbon::parse($date)->format('l, d F Y'),
+            'date' => $dateCarbon->format('d F Y'),
+            'date_formatted' => $dateCarbon->format('l, d F Y'),
+            'is_weekend' => $isWeekend,
+            'day_name' => $dateCarbon->format('l'),
             'total_employees' => $attendances->count(),
             'shifts' => $shifts
         ]);
     }
 
     /**
-     * AUTO GENERATE MONTHLY SCHEDULE WITH RANDOM BALANCED DISTRIBUTION
+     * AUTO GENERATE MONTHLY SCHEDULE WITH WEEKEND EXCLUSION OPTION
      */
     public function autoGenerateMonthlySchedule(Request $request)
     {
@@ -254,14 +282,18 @@ class JadwalController extends Controller
             ], 422);
         }
 
-        // Check for existing schedules
+        // Check for existing schedules - EXCLUDE yang status izin/cuti
         if (!$overwrite) {
-            $existingCount = Attendance::whereBetween('tanggal_absen', [$startDate, $endDate])->count();
+            $existingCount = Attendance::whereBetween('tanggal_absen', [$startDate, $endDate])
+                ->whereNotIn('status_absen', ['izin']) // IGNORE jadwal izin/cuti
+                ->count();
+
             if ($existingCount > 0) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Sudah ada jadwal untuk bulan ini. Aktifkan "Timpa Jadwal Lama" untuk mengganti.',
-                    'existing_count' => $existingCount
+                    'message' => 'Sudah ada jadwal kerja untuk bulan ini. Aktifkan "Timpa Jadwal Lama" untuk mengganti.',
+                    'existing_count' => $existingCount,
+                    'note' => 'Jadwal izin/cuti tidak akan tertimpa.'
                 ], 422);
             }
         }
@@ -269,16 +301,29 @@ class JadwalController extends Controller
         try {
             DB::beginTransaction();
 
-            // Delete existing schedules if overwrite is enabled
+            // Delete existing schedules if overwrite is enabled - JANGAN HAPUS yang status izin
             if ($overwrite) {
-                Attendance::whereBetween('tanggal_absen', [$startDate, $endDate])
+                $deletedCount = Attendance::whereBetween('tanggal_absen', [$startDate, $endDate])
                     ->whereNull('jam_masuk')
                     ->whereNull('jam_keluar')
+                    ->whereNotIn('status_absen', ['izin']) // JANGAN HAPUS jadwal izin
                     ->delete();
+
+                Log::info("Overwrite: Deleted {$deletedCount} existing schedules (excluding leave/izin)");
             }
+
+            // Get existing leave/izin schedules to avoid conflicts
+            $existingLeaveSchedules = Attendance::whereBetween('tanggal_absen', [$startDate, $endDate])
+                ->where('status_absen', 'izin')
+                ->get()
+                ->groupBy(function ($item) {
+                    return $item->tanggal_absen->format('Y-m-d') . '_' . $item->user_id;
+                });
 
             $generatedSchedules = [];
             $shiftStats = [];
+            $skipCount = 0;
+            $weekendSkipCount = 0;
 
             // Initialize shift statistics
             foreach ($activeShifts as $shift) {
@@ -294,23 +339,44 @@ class JadwalController extends Controller
             while ($currentDate <= $endDate) {
                 // Skip weekends if requested
                 if ($excludeWeekends && $currentDate->isWeekend()) {
+                    $weekendSkipCount++;
+                    $currentDate->addDay();
+                    continue;
+                }
+
+                // Get employees yang TIDAK sedang cuti/izin di tanggal ini
+                $availableEmployees = $employees->filter(function ($employee) use ($currentDate, $existingLeaveSchedules) {
+                    $dateKey = $currentDate->format('Y-m-d') . '_' . $employee->id;
+                    return !$existingLeaveSchedules->has($dateKey);
+                });
+
+                if ($availableEmployees->isEmpty()) {
+                    Log::info("No available employees for date: " . $currentDate->format('Y-m-d') . " (all on leave)");
                     $currentDate->addDay();
                     continue;
                 }
 
                 $dailySchedules = $this->generateBalancedDailySchedule(
-                    $employees,
+                    $availableEmployees, // Use filtered employees
                     $activeShifts,
                     $currentDate->copy(),
                     $minShiftRatio
                 );
 
                 foreach ($dailySchedules as $schedule) {
+                    // DOUBLE CHECK: Pastikan employee ini gak sedang izin
+                    $dateKey = $schedule['date'] . '_' . $schedule['user_id'];
+                    if ($existingLeaveSchedules->has($dateKey)) {
+                        $skipCount++;
+                        Log::info("Skipped generating schedule for employee {$schedule['user_id']} on {$schedule['date']} - already on leave");
+                        continue;
+                    }
+
                     $attendance = Attendance::create([
                         'user_id' => $schedule['user_id'],
                         'shift_id' => $schedule['shift_id'],
                         'tanggal_absen' => $schedule['date'],
-                        'status_absen' => 'menunggu', // Use the new status from migration
+                        'status_absen' => 'menunggu',
                         'status_masuk' => 'menunggu',
                         'status_keluar' => 'menunggu',
                         'jam_masuk' => null,
@@ -338,6 +404,9 @@ class JadwalController extends Controller
                 'message' => 'Jadwal bulanan berhasil di-generate!',
                 'data' => [
                     'total_schedules' => $totalSchedules,
+                    'skipped_due_to_leave' => $skipCount,
+                    'weekend_days_skipped' => $weekendSkipCount,
+                    'existing_leave_count' => $existingLeaveSchedules->count(),
                     'date_range' => [
                         'start' => $startDate->format('Y-m-d'),
                         'end' => $endDate->format('Y-m-d')
@@ -353,6 +422,7 @@ class JadwalController extends Controller
 
         } catch (\Exception $e) {
             DB::rollback();
+            Log::error("Auto generate schedule failed: " . $e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -411,6 +481,8 @@ class JadwalController extends Controller
 
         return $dailySchedules;
     }
+
+    // ... (sisa method lainnya tetap sama)
 
     /**
      * Clear all schedules for a month
@@ -618,7 +690,7 @@ class JadwalController extends Controller
             'user_id' => $request->user_id,
             'shift_id' => $request->shift_id,
             'tanggal_absen' => $request->tanggal,
-            'status_absen' => 'menunggu', // Use the new status from migration
+            'status_absen' => 'menunggu',
             'status_masuk' => 'menunggu',
             'status_keluar' => 'menunggu',
             'jam_masuk' => null,

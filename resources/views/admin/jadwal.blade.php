@@ -26,6 +26,42 @@
     .modal {
         backdrop-filter: blur(4px);
     }
+    
+    /* Weekend styling */
+    .weekend-cell {
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+        border: 2px solid #fca5a5;
+    }
+    
+    .weekend-cell:hover {
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        transform: none;
+    }
+    
+    .holiday-icon {
+        animation: bounce 2s infinite;
+    }
+    
+    @keyframes bounce {
+        0%, 20%, 50%, 80%, 100% {
+            transform: translateY(0);
+        }
+        40% {
+            transform: translateY(-5px);
+        }
+        60% {
+            transform: translateY(-3px);
+        }
+    }
+    
+    .holiday-text {
+        background: linear-gradient(45deg, #dc2626, #ef4444);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: bold;
+        text-shadow: 0 1px 2px rgba(220, 38, 38, 0.3);
+    }
 </style>
 @endpush
 
@@ -131,9 +167,14 @@
                     <div class="bg-yellow-50 p-3 rounded-lg">
                         @php
                             $workingDays = 0;
+                            $weekendDays = 0;
                             $current = $monthDate->copy()->startOfMonth();
                             while ($current <= $monthDate->copy()->endOfMonth()) {
-                                if (!$current->isWeekend()) $workingDays++;
+                                if ($current->isWeekend()) {
+                                    $weekendDays++;
+                                } else {
+                                    $workingDays++;
+                                }
                                 $current->addDay();
                             }
                         @endphp
@@ -141,50 +182,22 @@
                         <div class="text-sm text-yellow-600">Hari Kerja</div>
                     </div>
                     <div class="bg-red-50 p-3 rounded-lg">
-                        @php
-                            $existingSchedules = 0;
-                            foreach($daily_shift_summary as $summary) {
-                                $existingSchedules += $summary['total'];
-                            }
-                        @endphp
-                        <div class="text-2xl font-bold text-red-600">{{ $existingSchedules }}</div>
-                        <div class="text-sm text-red-600">Jadwal Existing</div>
+                        <div class="text-2xl font-bold text-red-600">{{ $weekendDays }}</div>
+                        <div class="text-sm text-red-600">Hari Libur</div>
                     </div>
                 </div>
-                
-                {{-- DEBUG INFO - Remove this after fixing --}}
-                @if(env('APP_DEBUG'))
-                <div class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <h4 class="font-medium text-yellow-800">Debug Info:</h4>
-                    <div class="text-sm text-yellow-700 mt-2">
-                        <p>Total attendances loaded: {{ isset($attendances) ? $attendances->count() : 'N/A' }}</p>
-                        <p>Date range: {{ $monthDate->copy()->startOfMonth()->format('Y-m-d') }} to {{ $monthDate->copy()->endOfMonth()->format('Y-m-d') }}</p>
-                        <p>Daily summary count: {{ count($daily_shift_summary) }}</p>
-                        @if(isset($attendances) && $attendances->count() > 0)
-                            <p>Sample attendance date: {{ $attendances->first()->tanggal_absen }}</p>
-                            <p>Sample shift: {{ $attendances->first()->shift->nama ?? 'No shift' }}</p>
-                        @endif
-                        @php
-                            $sampleDay = '2025-06-18';
-                            $sampleSummary = $daily_shift_summary[$sampleDay] ?? null;
-                        @endphp
-                        @if($sampleSummary)
-                            <p>Sample day ({{ $sampleDay }}) summary: {{ $sampleSummary['total'] }} attendances, {{ count($sampleSummary['shifts']) }} shifts</p>
-                        @else
-                            <p>No summary found for sample day {{ $sampleDay }}</p>
-                        @endif
-                    </div>
-                </div>
-                @endif
             </div>
 
             <!-- Calendar Grid -->
             <div class="p-6">
                 <!-- Day Headers -->
                 <div class="grid grid-cols-7 gap-1 mb-4">
-                    @foreach(['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as $day)
-                        <div class="p-3 text-center text-sm font-medium text-gray-700 bg-gray-50 rounded">
+                    @foreach(['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as $index => $day)
+                        <div class="p-3 text-center text-sm font-medium {{ in_array($index, [0, 6]) ? 'text-red-700 bg-red-50' : 'text-gray-700 bg-gray-50' }} rounded">
                             {{ $day }}
+                            @if(in_array($index, [0, 6]))
+                                <div class="text-xs text-red-500 mt-1">LIBUR</div>
+                            @endif
                         </div>
                     @endforeach
                 </div>
@@ -195,60 +208,108 @@
                         @foreach($week as $day)
                             @php
                                 $dayKey = $day['date']->format('Y-m-d');
-                                // Use the new structure from controller
-                                $summary = $daily_shift_summary[$dayKey] ?? ['total' => 0, 'shifts' => []];
+                                $summary = $daily_shift_summary[$dayKey] ?? ['total' => 0, 'shifts' => [], 'is_weekend' => $day['is_weekend']];
+                                $isWeekend = $day['is_weekend'];
+                                
+                                // Tentukan CSS classes untuk cell
+                                $cellClasses = "min-h-[140px] border rounded-lg p-3 cursor-pointer transition-all duration-200";
+                                
+                                if ($isWeekend) {
+                                    $cellClasses .= " weekend-cell";
+                                } else {
+                                    $cellClasses .= " border-gray-200 hover:bg-gray-50 hover:shadow-md";
+                                }
+                                
+                                if (!$day['is_current_month']) {
+                                    $cellClasses .= " opacity-40";
+                                }
+                                
+                                if ($day['is_today']) {
+                                    $cellClasses .= " ring-2 ring-blue-400 ring-offset-2";
+                                }
                             @endphp
-                            <div class="min-h-[120px] border border-gray-200 rounded-lg p-2 cursor-pointer hover:bg-gray-50 transition-colors
-                                        {{ !$day['is_current_month'] ? 'bg-gray-50 text-gray-400' : '' }}
-                                        {{ $day['is_today'] ? 'bg-blue-50 border-blue-300' : '' }}
-                                        {{ $day['is_weekend'] ? 'bg-red-50' : '' }}"
+                            <div class="{{ $cellClasses }}"
                                  onclick="openDateDetailModal('{{ $dayKey }}')">
                                 
-                                <!-- Date Number -->
-                                <div class="text-sm font-medium mb-2 
-                                            {{ $day['is_today'] ? 'text-blue-600' : '' }}
-                                            {{ $day['is_weekend'] ? 'text-red-600' : 'text-gray-900' }}">
-                                    {{ $day['date']->format('d') }}
-                                    @if(env('APP_DEBUG') && $summary['total'] > 0)
-                                        <span class="text-xs bg-green-200 px-1 rounded">{{ $summary['total'] }}</span>
+                                <!-- Date Number with Weekend indicator -->
+                                <div class="flex items-center justify-between mb-3">
+                                    <div class="text-lg font-bold 
+                                                {{ $day['is_today'] ? 'text-blue-600' : '' }}
+                                                {{ $isWeekend ? 'text-red-600' : 'text-gray-900' }}">
+                                        {{ $day['date']->format('d') }}
+                                    </div>
+                                    
+                                    @if($isWeekend)
+                                        <div class="holiday-icon text-red-500">
+                                            🏖️
+                                        </div>
                                     @endif
                                 </div>
 
-                                <!-- Shift Summary -->
-                                @if($summary['total'] > 0)
-                                    <div class="space-y-1">
-                                        @foreach($summary['shifts'] as $shift)
-                                            <div class="flex items-center justify-between text-xs">
-                                                <span class="font-medium text-gray-700 truncate">{{ $shift['nama'] }}</span>
-                                                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
-                                                    {{ $shift['count'] }}
-                                                </span>
+                                @if($isWeekend)
+                                    <!-- Weekend/Holiday Display -->
+                                    <div class="text-center">
+                                        <div class="text-center mb-2">
+                                            <div class="holiday-icon text-2xl mb-1">
+                                                {{ $day['date']->format('w') == 0 ? '🌅' : '🎉' }}
                                             </div>
-                                            @if($shift['jam_masuk'])
-                                                <div class="text-xs text-gray-500 ml-1">
-                                                    {{ Carbon\Carbon::parse($shift['jam_masuk'])->format('H:i') }} - 
-                                                    {{ Carbon\Carbon::parse($shift['jam_keluar'])->format('H:i') }}
-                                                </div>
-                                            @endif
-                                        @endforeach
-                                        
-                                        <!-- Total Summary -->
-                                        <div class="border-t border-gray-200 pt-1 mt-2">
-                                            <div class="flex items-center justify-between text-xs font-semibold">
-                                                <span class="text-gray-600">Total</span>
-                                                <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                                                    {{ $summary['total'] }}
-                                                </span>
+                                            <div class="holiday-text text-sm font-bold">
+                                                {{ $day['date']->format('w') == 0 ? 'MINGGU' : 'SABTU' }}
+                                            </div>
+                                            <div class="text-xs text-red-600 font-medium mt-1">
+                                                HARI LIBUR
                                             </div>
                                         </div>
-                                    </div>
-                                @else
-                                    <div class="text-xs text-gray-400 text-center mt-4">
-                                        Belum ada jadwal
-                                        @if(env('APP_DEBUG'))
-                                            <br><span class="text-red-500">Debug: {{ $dayKey }}</span>
+                                        
+                                        @if($summary['total'] > 0)
+                                            <div class="bg-red-100 border border-red-300 rounded-lg p-2 mt-2">
+                                                <div class="text-xs text-red-800 font-medium">
+                                                    ⚠️ Ada {{ $summary['total'] }} jadwal khusus
+                                                </div>
+                                            </div>
                                         @endif
                                     </div>
+                                @else
+                                    <!-- Working Day Display -->
+                                    @if($summary['total'] > 0)
+                                        <div class="space-y-1">
+                                            @foreach($summary['shifts'] as $shift)
+                                                <div class="flex items-center justify-between text-xs">
+                                                    <span class="font-medium text-gray-700 truncate">{{ $shift['nama'] }}</span>
+                                                    <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
+                                                        {{ $shift['count'] }}
+                                                    </span>
+                                                </div>
+                                                @if($shift['jam_masuk'])
+                                                    <div class="text-xs text-gray-500 ml-1">
+                                                        {{ Carbon\Carbon::parse($shift['jam_masuk'])->format('H:i') }} - 
+                                                        {{ Carbon\Carbon::parse($shift['jam_keluar'])->format('H:i') }}
+                                                    </div>
+                                                @endif
+                                            @endforeach
+                                            
+                                            <!-- Total Summary -->
+                                            <div class="border-t border-gray-200 pt-1 mt-2">
+                                                <div class="flex items-center justify-between text-xs font-semibold">
+                                                    <span class="text-gray-600">Total</span>
+                                                    <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                                                        {{ $summary['total'] }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @else
+                                        <div class="text-center mt-4">
+                                            <div class="text-gray-400 mb-2">
+                                                <svg class="w-6 h-6 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                                </svg>
+                                            </div>
+                                            <div class="text-xs text-gray-400 font-medium">
+                                                Belum ada jadwal
+                                            </div>
+                                        </div>
+                                    @endif
                                 @endif
                             </div>
                         @endforeach
@@ -258,16 +319,20 @@
                 <!-- Legend -->
                 <div class="mt-6 flex flex-wrap items-center gap-4 text-sm">
                     <div class="flex items-center">
-                        <div class="w-4 h-4 bg-blue-50 border border-blue-300 rounded mr-2"></div>
+                        <div class="w-4 h-4 bg-blue-50 ring-2 ring-blue-400 rounded mr-2"></div>
                         <span class="text-gray-600">Hari Ini</span>
                     </div>
                     <div class="flex items-center">
-                        <div class="w-4 h-4 bg-red-50 rounded mr-2"></div>
-                        <span class="text-gray-600">Weekend</span>
+                        <div class="w-4 h-4 bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-300 rounded mr-2"></div>
+                        <span class="text-gray-600">Weekend/Libur</span>
                     </div>
                     <div class="flex items-center">
-                        <div class="w-4 h-4 bg-gray-50 rounded mr-2"></div>
+                        <div class="w-4 h-4 bg-gray-50 rounded mr-2 opacity-40"></div>
                         <span class="text-gray-600">Bulan Lain</span>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium mr-2">10</span>
+                        <span class="text-gray-600">Jumlah Karyawan per Shift</span>
                     </div>
                     <div class="ml-auto text-gray-500">
                         💡 Klik tanggal untuk melihat detail karyawan per shift
@@ -442,7 +507,7 @@
                     <div class="flex items-center">
                         <input type="checkbox" name="exclude_weekends" checked
                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                        <label class="ml-2 text-sm text-gray-700">Exclude Weekends</label>
+                        <label class="ml-2 text-sm text-gray-700">Exclude Weekends (Sabtu-Minggu)</label>
                     </div>
                     
                     <div class="flex items-center">
@@ -682,8 +747,22 @@ function loadDateDetail(date) {
             
             let content = '';
             
-            // Check if there are any shifts AND total employees > 0
-            if (!data.shifts || data.shifts.length === 0 || data.total_employees === 0) {
+            // Check if it's weekend
+            if (data.is_weekend && data.total_employees === 0) {
+                content = `
+                    <div class="text-center py-8">
+                        <div class="text-6xl mb-4">
+                            ${data.day_name === 'Sunday' ? '🌅' : '🎉'}
+                        </div>
+                        <h3 class="text-xl font-bold text-red-600 mb-2">${data.day_name.toUpperCase()}</h3>
+                        <p class="text-lg font-medium text-red-500 mb-4">HARI LIBUR</p>
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-4 max-w-md mx-auto">
+                            <p class="text-sm text-red-700">Tidak ada jadwal kerja untuk hari ini.</p>
+                            <p class="text-xs text-red-600 mt-2">Semua karyawan libur.</p>
+                        </div>
+                    </div>
+                `;
+            } else if (!data.shifts || data.shifts.length === 0 || data.total_employees === 0) {
                 content = `
                     <div class="text-center py-8">
                         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -694,7 +773,22 @@ function loadDateDetail(date) {
                     </div>
                 `;
             } else {
-                content = `
+                // Show special message for weekend with attendance
+                if (data.is_weekend) {
+                    content += `
+                        <div class="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
+                            <div class="flex items-center">
+                                <div class="text-2xl mr-3">⚠️</div>
+                                <div>
+                                    <h4 class="font-medium text-red-800">${data.day_name.toUpperCase()} - HARI LIBUR</h4>
+                                    <p class="text-sm text-red-600">Ada jadwal khusus untuk hari libur ini</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                content += `
                     <div class="mb-4 bg-blue-50 p-4 rounded-lg">
                         <div class="flex items-center justify-between">
                             <span class="text-sm font-medium text-blue-800">Total Karyawan Terjadwal</span>
@@ -989,13 +1083,6 @@ document.addEventListener('click', function(e) {
         }
     });
 });
-
-// Debug function to test if data exists
-function debugScheduleData() {
-    const today = new Date().toISOString().split('T')[0];
-    console.log('Testing with today\'s date:', today);
-    loadDateDetail(today);
-}
 </script>
 @endpush
 @endsection

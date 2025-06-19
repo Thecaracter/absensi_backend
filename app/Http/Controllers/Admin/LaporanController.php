@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 class LaporanController extends Controller
 {
     /**
-     * Halaman Laporan Utama
+     * Halaman Laporan Utama - SATU VIEW SAJA
      */
     public function index()
     {
@@ -35,7 +35,47 @@ class LaporanController extends Controller
         $karyawan = User::karyawan()->aktif()->get();
         $shifts = Shift::aktif()->get();
 
-        return view('admin.laporan', compact('summaryStats', 'chartData', 'karyawan', 'shifts'));
+        // Initialize empty data for tabs (will be loaded via AJAX)
+        $absensi = collect();
+        $izin = collect();
+
+        // FIXED: Added $karyawanKinerja with empty collection for initial load
+        $karyawanKinerja = collect();
+
+        $overallStats = [
+            'rata_rata_kehadiran' => 0,
+            'karyawan_excellent' => 0,
+            'karyawan_good' => 0,
+            'karyawan_average' => 0,
+            'karyawan_poor' => 0,
+        ];
+
+        // Empty stats for tabs
+        $stats = [
+            'total_hari_kerja' => 0,
+            'total_hadir' => 0,
+            'total_terlambat' => 0,
+            'total_tidak_hadir' => 0,
+            'total_izin' => 0,
+            'total_pengajuan' => 0,
+            'disetujui' => 0,
+            'ditolak' => 0,
+            'menunggu' => 0,
+            'total_hari_izin' => 0,
+        ];
+
+        // HANYA SATU VIEW: admin.laporan - FIXED: Added $karyawanKinerja to compact
+        return view('admin.laporan', compact(
+            'summaryStats',
+            'chartData',
+            'karyawan',
+            'shifts',
+            'absensi',
+            'izin',
+            'karyawanKinerja',  // ADDED THIS LINE
+            'overallStats',
+            'stats'
+        ));
     }
 
     /**
@@ -62,7 +102,7 @@ class LaporanController extends Controller
     }
 
     /**
-     * Laporan Absensi
+     * Laporan Absensi - HANYA AJAX/JSON (RINGKASAN PER KARYAWAN)
      */
     public function absensi(Request $request)
     {
@@ -74,102 +114,125 @@ class LaporanController extends Controller
         $userId = $request->user_id;
         $shiftId = $request->shift_id;
 
-        // Base query
-        $query = Attendance::with(['user', 'shift'])
-            ->whereMonth('tanggal_absen', $periode->month)
-            ->whereYear('tanggal_absen', $periode->year);
+        // Base query untuk karyawan
+        $query = User::karyawan()->aktif()->with('shift');
 
         if ($userId) {
-            $query->where('user_id', $userId);
+            $query->where('id', $userId);
         }
 
         if ($shiftId) {
             $query->where('shift_id', $shiftId);
         }
 
-        // Statistik
-        $stats = [
-            'total_hari_kerja' => $this->getWorkingDaysInMonth($periode),
-            'total_absensi' => $query->count(),
-            'total_hadir' => $query->clone()->hadir()->count(),
-            'total_terlambat' => $query->clone()->terlambat()->count(),
-            'total_tidak_hadir' => $query->clone()->tidakHadir()->count(),
-            'total_izin' => $query->clone()->where('status_absen', 'izin')->count(),
-        ];
+        // RINGKASAN PER KARYAWAN dengan statistik absensi
+        $absensi = $query->withCount([
+            'attendances as total_hadir' => function ($q) use ($periode) {
+                $q->whereMonth('tanggal_absen', $periode->month)
+                    ->whereYear('tanggal_absen', $periode->year)
+                    ->whereIn('status_absen', ['hadir', 'terlambat']);
+            },
+            'attendances as total_terlambat' => function ($q) use ($periode) {
+                $q->whereMonth('tanggal_absen', $periode->month)
+                    ->whereYear('tanggal_absen', $periode->year)
+                    ->where('status_absen', 'terlambat');
+            },
+            'attendances as total_tidak_hadir' => function ($q) use ($periode) {
+                $q->whereMonth('tanggal_absen', $periode->month)
+                    ->whereYear('tanggal_absen', $periode->year)
+                    ->where('status_absen', 'tidak_hadir');
+            },
+            'attendances as total_izin' => function ($q) use ($periode) {
+                $q->whereMonth('tanggal_absen', $periode->month)
+                    ->whereYear('tanggal_absen', $periode->year)
+                    ->where('status_absen', 'izin');
+            },
+            'leaveRequests as total_pengajuan_izin' => function ($q) use ($periode) {
+                $q->whereMonth('tanggal_mulai', $periode->month)
+                    ->whereYear('tanggal_mulai', $periode->year);
+            }
+        ])->get();
 
-        // Data untuk filter
-        $karyawan = User::karyawan()->aktif()->get();
-        $shifts = Shift::aktif()->get();
+        // Statistik TOTAL
+        $totalQuery = Attendance::whereMonth('tanggal_absen', $periode->month)
+            ->whereYear('tanggal_absen', $periode->year);
 
-        // Jika AJAX request
-        if ($request->ajax()) {
-            $absensi = $query->orderBy('tanggal_absen', 'desc')->take(50)->get();
-
-            // Stats per shift
-            $statsPerShift = Attendance::whereMonth('tanggal_absen', $periode->month)
-                ->whereYear('tanggal_absen', $periode->year)
-                ->when($userId, function ($q) use ($userId) {
-                    return $q->where('user_id', $userId);
-                })
-                ->with('shift')
-                ->get()
-                ->groupBy('shift.nama')
-                ->map(function ($group) {
-                    return [
-                        'total' => $group->count(),
-                        'hadir' => $group->where('status_absen', 'hadir')->count(),
-                        'terlambat' => $group->where('status_absen', 'terlambat')->count(),
-                        'tidak_hadir' => $group->where('status_absen', 'tidak_hadir')->count(),
-                        'izin' => $group->where('status_absen', 'izin')->count(),
-                    ];
-                });
-
-            // Top terlambat
-            $topTerlambat = User::karyawan()
-                ->withCount([
-                    'attendances as total_terlambat' => function ($q) use ($periode) {
-                        $q->whereMonth('tanggal_absen', $periode->month)
-                            ->whereYear('tanggal_absen', $periode->year)
-                            ->where('status_absen', 'terlambat');
-                    }
-                ])
-                ->having('total_terlambat', '>', 0)
-                ->orderBy('total_terlambat', 'desc')
-                ->take(10)
-                ->get();
-
-            return response()->json([
-                'stats' => $stats,
-                'statsPerShift' => $statsPerShift,
-                'topTerlambat' => $topTerlambat,
-                'absensi' => $absensi->map(function ($att) {
-                    return [
-                        'id' => $att->id,
-                        'tanggal' => $att->tanggal_absen->format('d/m/Y'),
-                        'karyawan' => $att->user->name,
-                        'id_karyawan' => $att->user->id_karyawan,
-                        'shift' => $att->shift->nama,
-                        'jam_masuk' => $att->jam_masuk ? Carbon::parse($att->jam_masuk)->format('H:i') : null,
-                        'jam_keluar' => $att->jam_keluar ? Carbon::parse($att->jam_keluar)->format('H:i') : null,
-                        'status' => $att->getStatusAbsenText(),
-                        'status_badge_class' => $this->getStatusBadgeClass($att->status_absen),
-                        'menit_terlambat' => $att->menit_terlambat,
-                        'durasi_kerja' => $att->getDurasiKerjaFormatted(),
-                    ];
-                }),
-            ]);
+        if ($userId) {
+            $totalQuery->where('user_id', $userId);
         }
 
-        // For regular page load
-        $absensi = $query->orderBy('tanggal_absen', 'desc')->paginate(20);
+        if ($shiftId) {
+            $totalQuery->where('shift_id', $shiftId);
+        }
 
-        return view('admin.laporan.absensi', compact(
-            'absensi',
-            'stats',
-            'karyawan',
-            'shifts',
-            'bulan'
-        ));
+        $stats = [
+            'total_hari_kerja' => $this->getWorkingDaysInMonth($periode),
+            'total_absensi' => $totalQuery->count(),
+            'total_hadir' => $totalQuery->clone()->hadir()->count(),
+            'total_terlambat' => $totalQuery->clone()->terlambat()->count(),
+            'total_tidak_hadir' => $totalQuery->clone()->tidakHadir()->count(),
+            'total_izin' => $totalQuery->clone()->where('status_absen', 'izin')->count(),
+        ];
+
+        // Stats per shift
+        $statsPerShift = Attendance::whereMonth('tanggal_absen', $periode->month)
+            ->whereYear('tanggal_absen', $periode->year)
+            ->when($userId, function ($q) use ($userId) {
+                return $q->where('user_id', $userId);
+            })
+            ->with('shift')
+            ->get()
+            ->groupBy('shift.nama')
+            ->map(function ($group) {
+                return [
+                    'total' => $group->count(),
+                    'hadir' => $group->where('status_absen', 'hadir')->count(),
+                    'terlambat' => $group->where('status_absen', 'terlambat')->count(),
+                    'tidak_hadir' => $group->where('status_absen', 'tidak_hadir')->count(),
+                    'izin' => $group->where('status_absen', 'izin')->count(),
+                ];
+            });
+
+        // Top terlambat
+        $topTerlambat = User::karyawan()
+            ->withCount([
+                'attendances as total_terlambat' => function ($q) use ($periode) {
+                    $q->whereMonth('tanggal_absen', $periode->month)
+                        ->whereYear('tanggal_absen', $periode->year)
+                        ->where('status_absen', 'terlambat');
+                }
+            ])
+            ->having('total_terlambat', '>', 0)
+            ->orderBy('total_terlambat', 'desc')
+            ->take(10)
+            ->get();
+
+        // HANYA RETURN JSON - RINGKASAN PER KARYAWAN
+        return response()->json([
+            'stats' => $stats,
+            'statsPerShift' => $statsPerShift,
+            'topTerlambat' => $topTerlambat,
+            'absensi' => $absensi->map(function ($emp) use ($periode) {
+                $totalHariKerja = $this->getWorkingDaysInMonth($periode);
+                $tingkatKehadiran = $totalHariKerja > 0 ?
+                    round(($emp->total_hadir / $totalHariKerja) * 100, 2) : 0;
+
+                return [
+                    'id' => $emp->id,
+                    'id_karyawan' => $emp->id_karyawan,
+                    'karyawan' => $emp->name,
+                    'shift' => $emp->shift ? $emp->shift->nama : '-',
+                    'total_hari_kerja' => $totalHariKerja,
+                    'total_hadir' => $emp->total_hadir,
+                    'total_terlambat' => $emp->total_terlambat,
+                    'total_tidak_hadir' => $emp->total_tidak_hadir,
+                    'total_izin' => $emp->total_izin,
+                    'total_pengajuan_izin' => $emp->total_pengajuan_izin,
+                    'tingkat_kehadiran' => $tingkatKehadiran,
+                    'foto_url' => $emp->foto_url,
+                ];
+            }),
+        ]);
     }
 
     /**
@@ -226,7 +289,7 @@ class LaporanController extends Controller
     }
 
     /**
-     * Laporan Izin/Cuti
+     * Laporan Izin/Cuti - HANYA AJAX/JSON
      */
     public function izin(Request $request)
     {
@@ -265,72 +328,65 @@ class LaporanController extends Controller
             'total_hari_izin' => $query->clone()->disetujui()->sum('total_hari'),
         ];
 
-        // Data untuk filter
-        $karyawan = User::karyawan()->aktif()->get();
+        // Ambil data izin
+        $izin = $query->orderBy('created_at', 'desc')->take(50)->get();
 
-        // Jika AJAX request
-        if ($request->ajax()) {
-            $izin = $query->orderBy('created_at', 'desc')->take(50)->get();
+        // Stats per jenis
+        $statsPerJenis = LeaveRequest::whereMonth('tanggal_mulai', $periode->month)
+            ->whereYear('tanggal_mulai', $periode->year)
+            ->when($userId, function ($q) use ($userId) {
+                return $q->where('user_id', $userId);
+            })
+            ->selectRaw('jenis_izin, status, COUNT(*) as total, SUM(total_hari) as total_hari')
+            ->groupBy('jenis_izin', 'status')
+            ->get()
+            ->groupBy('jenis_izin');
 
-            // Stats per jenis
-            $statsPerJenis = LeaveRequest::whereMonth('tanggal_mulai', $periode->month)
-                ->whereYear('tanggal_mulai', $periode->year)
-                ->when($userId, function ($q) use ($userId) {
-                    return $q->where('user_id', $userId);
-                })
-                ->selectRaw('jenis_izin, status, COUNT(*) as total, SUM(total_hari) as total_hari')
-                ->groupBy('jenis_izin', 'status')
-                ->get()
-                ->groupBy('jenis_izin');
+        // Top izin
+        $topIzin = User::karyawan()
+            ->withCount([
+                'leaveRequests as total_izin' => function ($q) use ($periode) {
+                    $q->whereMonth('tanggal_mulai', $periode->month)
+                        ->whereYear('tanggal_mulai', $periode->year)
+                        ->where('status', 'disetujui');
+                }
+            ])
+            ->with([
+                'leaveRequests' => function ($q) use ($periode) {
+                    $q->whereMonth('tanggal_mulai', $periode->month)
+                        ->whereYear('tanggal_mulai', $periode->year)
+                        ->where('status', 'disetujui');
+                }
+            ])
+            ->having('total_izin', '>', 0)
+            ->orderBy('total_izin', 'desc')
+            ->take(10)
+            ->get();
 
-            // Top izin
-            $topIzin = User::karyawan()
-                ->withCount([
-                    'leaveRequests as total_izin' => function ($q) use ($periode) {
-                        $q->whereMonth('tanggal_mulai', $periode->month)
-                            ->whereYear('tanggal_mulai', $periode->year)
-                            ->where('status', 'disetujui');
-                    }
-                ])
-                ->having('total_izin', '>', 0)
-                ->orderBy('total_izin', 'desc')
-                ->take(10)
-                ->get();
-
-            return response()->json([
-                'stats' => $stats,
-                'statsPerJenis' => $statsPerJenis,
-                'topIzin' => $topIzin,
-                'izin' => $izin->map(function ($leave) {
-                    return [
-                        'id' => $leave->id,
-                        'tanggal_pengajuan' => $leave->created_at->format('d/m/Y'),
-                        'karyawan' => $leave->user->name,
-                        'id_karyawan' => $leave->user->id_karyawan,
-                        'jenis_izin' => $leave->getJenisIzinText(),
-                        'tanggal_mulai' => $leave->tanggal_mulai->format('d/m/Y'),
-                        'tanggal_selesai' => $leave->tanggal_selesai->format('d/m/Y'),
-                        'total_hari' => $leave->total_hari,
-                        'durasi_text' => $leave->getDurasiText(),
-                        'alasan' => $leave->alasan,
-                        'status' => $leave->getStatusText(),
-                        'status_badge_class' => $this->getStatusBadgeClass($leave->status),
-                        'approver' => $leave->approver ? $leave->approver->name : null,
-                        'tanggal_persetujuan' => $leave->tanggal_persetujuan ? $leave->tanggal_persetujuan->format('d/m/Y H:i') : null,
-                    ];
-                }),
-            ]);
-        }
-
-        // For regular page load
-        $izin = $query->orderBy('created_at', 'desc')->paginate(20);
-
-        return view('admin.laporan.izin', compact(
-            'izin',
-            'stats',
-            'karyawan',
-            'bulan'
-        ));
+        // HANYA RETURN JSON - TIDAK ADA VIEW
+        return response()->json([
+            'stats' => $stats,
+            'statsPerJenis' => $statsPerJenis,
+            'topIzin' => $topIzin,
+            'izin' => $izin->map(function ($leave) {
+                return [
+                    'id' => $leave->id,
+                    'tanggal_pengajuan' => $leave->created_at->format('d/m/Y'),
+                    'karyawan' => $leave->user->name,
+                    'id_karyawan' => $leave->user->id_karyawan,
+                    'jenis_izin' => $leave->getJenisIzinText(),
+                    'tanggal_mulai' => $leave->tanggal_mulai->format('d/m/Y'),
+                    'tanggal_selesai' => $leave->tanggal_selesai->format('d/m/Y'),
+                    'total_hari' => $leave->total_hari,
+                    'durasi_text' => $leave->getDurasiText(),
+                    'alasan' => $leave->alasan,
+                    'status' => $leave->getStatusText(),
+                    'status_badge_class' => $this->getStatusBadgeClass($leave->status),
+                    'approver' => $leave->approver ? $leave->approver->name : null,
+                    'tanggal_persetujuan' => $leave->tanggal_persetujuan ? $leave->tanggal_persetujuan->format('d/m/Y H:i') : null,
+                ];
+            }),
+        ]);
     }
 
     /**
@@ -390,7 +446,7 @@ class LaporanController extends Controller
     }
 
     /**
-     * Laporan Kinerja Karyawan
+     * Laporan Kinerja Karyawan - HANYA AJAX/JSON
      */
     public function kinerja(Request $request)
     {
@@ -460,19 +516,12 @@ class LaporanController extends Controller
             'karyawan_poor' => $karyawan->where('rating', 'Poor')->count(),
         ];
 
-        if ($request->ajax()) {
-            return response()->json([
-                'karyawan' => $karyawan->values(),
-                'overallStats' => $overallStats,
-                'periode_text' => $periode->format('F Y'),
-            ]);
-        }
-
-        return view('admin.laporan.kinerja', compact(
-            'karyawan',
-            'overallStats',
-            'bulan'
-        ));
+        // HANYA RETURN JSON - TIDAK ADA VIEW
+        return response()->json([
+            'karyawan' => $karyawan->values(),
+            'overallStats' => $overallStats,
+            'periode_text' => $periode->format('F Y'),
+        ]);
     }
 
     /**
@@ -550,7 +599,7 @@ class LaporanController extends Controller
     }
 
     /**
-     * Export Laporan
+     * Export Laporan (MAIN EXPORT METHOD)
      */
     public function export(Request $request)
     {
