@@ -15,8 +15,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             ShiftSeeder::class,
             AdminSeeder::class,
-            AttendanceSeeder::class,
-            LeaveRequestSeeder::class,
+            // AttendanceSeeder::class,
+            // LeaveRequestSeeder::class,
         ]);
     }
 }
