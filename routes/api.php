@@ -2,18 +2,53 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\ApiAuthController;
+use App\Http\Controllers\Api\ApiAttendanceController;
+use App\Http\Controllers\Api\ApiLeaveController;
+use App\Http\Controllers\Api\ApiProfileController;
 
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
-|
-*/
+// API Version 1
+Route::prefix('v1')->group(function () {
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+    // PUBLIC ROUTES
+    Route::prefix('auth')->group(function () {
+        Route::post('/login', [ApiAuthController::class, 'login']);
+    });
+
+    Route::get('/test', function () {
+        return response()->json([
+            'success' => true,
+            'message' => 'API is working!',
+            'version' => 'v1',
+            'timestamp' => now()->toISOString()
+        ]);
+    });
+
+    // PROTECTED ROUTES
+    Route::middleware('auth:sanctum')->group(function () {
+        // Auth routes
+        Route::prefix('auth')->group(function () {
+            Route::post('/logout', [ApiAuthController::class, 'logout']);
+            Route::get('/me', [ApiAuthController::class, 'me']);
+        });
+
+        // Profile routes
+        Route::prefix('profile')->group(function () {
+            Route::get('/', [ApiProfileController::class, 'show']);
+            Route::put('/', [ApiProfileController::class, 'update']);
+        });
+
+        // Attendance routes
+        Route::prefix('attendance')->group(function () {
+            Route::get('/today', [ApiAttendanceController::class, 'todayAttendance']);
+            Route::post('/check-in', [ApiAttendanceController::class, 'checkIn']);
+            Route::post('/check-out', [ApiAttendanceController::class, 'checkOut']);
+        });
+
+        // Leave requests
+        Route::prefix('leave-requests')->group(function () {
+            Route::get('/', [ApiLeaveController::class, 'index']);
+            Route::post('/', [ApiLeaveController::class, 'store']);
+        });
+    });
 });
