@@ -265,14 +265,6 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                     </svg>
                                 </button>
-                                @if($leave->status == 'menunggu')
-                                    <button onclick="editModal('{{ $leave->id }}')" 
-                                            class="text-indigo-600 hover:text-indigo-900 p-1" title="Edit">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                        </svg>
-                                    </button>
-                                @endif
                                 @if($leave->status === 'disetujui')
                                     <button onclick="cancelApproval('{{ $leave->id }}')" 
                                             class="text-orange-600 hover:text-orange-900 p-1" title="Batalkan Approval">
@@ -508,13 +500,6 @@
                                                     title="Tolak">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                                </svg>
-                                            </button>
-                                            <button onclick="editModal('{{ $leave->id }}')" 
-                                                    class="text-indigo-600 hover:text-indigo-900 transition-colors p-1 hover:bg-indigo-50 rounded" 
-                                                    title="Edit">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                                 </svg>
                                             </button>
                                         @endif
@@ -777,8 +762,8 @@
     </div>
 </div>
 
-<!-- Approve Modal - FIXED: menggunakan PATCH method -->
-<div id="approveModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+<!-- Approve Modal -->
+<div id="approveModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-[60]">
     <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <div class="mt-3 text-center">
             <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
@@ -818,8 +803,8 @@
     </div>
 </div>
 
-<!-- Reject Modal - FIXED: menggunakan PATCH method -->
-<div id="rejectModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+<!-- Reject Modal -->
+<div id="rejectModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-[60]">
     <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <div class="mt-3 text-center">
             <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
@@ -859,8 +844,8 @@
     </div>
 </div>
 
-<!-- Cancel Approval Modal - FIXED: menggunakan PATCH method -->
-<div id="cancelModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+<!-- Cancel Approval Modal -->
+<div id="cancelModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-[60]">
     <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <div class="mt-3 text-center">
             <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-orange-100">
@@ -922,26 +907,8 @@
     </div>
 </div>
 
-<!-- Edit Modal -->
-<div id="editModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
-    <div class="relative top-4 mx-auto p-4 border w-full max-w-2xl shadow-lg rounded-lg bg-white my-8">
-        <div class="flex items-center justify-between border-b pb-3">
-            <h3 class="text-lg font-semibold text-gray-900">Edit Permohonan Izin</h3>
-            <button onclick="closeModal('editModal')" class="text-gray-400 hover:text-gray-600">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-            </button>
-        </div>
-        
-        <div id="editModalContent" class="mt-4">
-            <!-- Content will be loaded dynamically -->
-        </div>
-    </div>
-</div>
-
 <!-- Delete Confirmation Modal -->
-<div id="deleteModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+<div id="deleteModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-[60]">
     <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <div class="mt-3 text-center">
             <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
@@ -1012,7 +979,6 @@
             approve: "{{ route('admin.izin.approve', ':id') }}",  
             reject: "{{ route('admin.izin.reject', ':id') }}",
             cancel: "{{ route('admin.izin.cancel', ':id') }}",
-            update: "{{ route('admin.izin.update', ':id') }}",
             destroy: "{{ route('admin.izin.destroy', ':id') }}"
         };
     });
@@ -1150,17 +1116,13 @@
                             </button>
                         </div>
                         <div class="flex gap-2">
-                            <button onclick="rejectIzin('${izinId}')" 
+                            <button onclick="closeModal('showModal'); rejectIzin('${izinId}')" 
                                     class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors">
                                 Tolak
                             </button>
-                            <button onclick="approveIzin('${izinId}')" 
+                            <button onclick="closeModal('showModal'); approveIzin('${izinId}')" 
                                     class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors">
                                 Setujui + Buat Jadwal
-                            </button>
-                            <button onclick="closeModal('showModal'); editModal('${izinId}')" 
-                                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
-                                Edit
                             </button>
                         </div>
                     `;
@@ -1175,7 +1137,7 @@
                         </button>
                         <div class="flex gap-2">
                             ${data.status === 'disetujui' ? `
-                                <button onclick="cancelApproval('${izinId}')" 
+                                <button onclick="closeModal('showModal'); cancelApproval('${izinId}')" 
                                         class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors">
                                     Batalkan Approval
                                 </button>
@@ -1194,84 +1156,6 @@
             .catch(error => {
                 console.error('Error:', error);
                 alert('Gagal memuat detail izin');
-            });
-    }
-
-    // Edit izin modal - FIXED: menggunakan helper function dan route yang benar
-    function editModal(izinId) {
-        // Fetch data untuk edit form dengan URL yang benar
-        fetch(getIzinRoute('show', izinId))
-            .then(response => response.json())
-            .then(data => {
-                const content = `
-                    <form action="${getIzinRoute('update', izinId)}" method="POST" enctype="multipart/form-data">
-                        @csrf
-                        @method('PUT')
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto px-1">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Jenis Izin *</label>
-                                <select name="jenis_izin" required
-                                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    <option value="sakit" ${data.jenis_izin === 'sakit' ? 'selected' : ''}>Sakit</option>
-                                    <option value="cuti_tahunan" ${data.jenis_izin === 'cuti_tahunan' ? 'selected' : ''}>Cuti Tahunan</option>
-                                    <option value="keperluan_pribadi" ${data.jenis_izin === 'keperluan_pribadi' ? 'selected' : ''}>Keperluan Pribadi</option>
-                                    <option value="darurat" ${data.jenis_izin === 'darurat' ? 'selected' : ''}>Darurat</option>
-                                    <option value="lainnya" ${data.jenis_izin === 'lainnya' ? 'selected' : ''}>Lainnya</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                                <select name="status"
-                                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    <option value="menunggu" ${data.status === 'menunggu' ? 'selected' : ''}>Menunggu Persetujuan</option>
-                                    <option value="disetujui" ${data.status === 'disetujui' ? 'selected' : ''}>Disetujui (+ Buat Jadwal)</option>
-                                    <option value="ditolak" ${data.status === 'ditolak' ? 'selected' : ''}>Ditolak</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal Mulai *</label>
-                                <input type="date" name="tanggal_mulai" value="${data.tanggal_mulai.split('/').reverse().join('-')}" required
-                                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal Selesai *</label>
-                                <input type="date" name="tanggal_selesai" value="${data.tanggal_selesai.split('/').reverse().join('-')}" required
-                                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            </div>
-                            <div class="md:col-span-2">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Alasan *</label>
-                                <textarea name="alasan" required rows="4"
-                                          class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                          placeholder="Jelaskan alasan permohonan izin...">${data.alasan}</textarea>
-                            </div>
-                            <div class="md:col-span-2">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Lampiran Baru (Opsional)</label>
-                                <input type="file" name="lampiran" accept="image/*,application/pdf"
-                                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                <p class="text-xs text-gray-500 mt-1">Format: JPEG, PNG, PDF. Maksimal 2MB. Kosongkan jika tidak ingin mengubah.</p>
-                                ${data.lampiran_url ? `<p class="text-xs text-blue-600 mt-1">File saat ini: <a href="${data.lampiran_url}" target="_blank" class="underline">Lihat lampiran</a></p>` : ''}
-                            </div>
-                        </div>
-                        
-                        <div class="flex flex-col sm:flex-row items-center justify-end gap-3 mt-6 pt-4 border-t">
-                            <button type="button" onclick="closeModal('editModal')" 
-                                    class="w-full sm:w-auto bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
-                                Batal
-                            </button>
-                            <button type="submit" 
-                                    class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
-                                Update
-                            </button>
-                        </div>
-                    </form>
-                `;
-
-                document.getElementById('editModalContent').innerHTML = content;
-                openModal('editModal');
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Gagal memuat data untuk edit');
             });
     }
 

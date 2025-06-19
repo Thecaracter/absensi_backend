@@ -1,8 +1,8 @@
 @extends('layouts.app')
 
-@section('title', 'Data Absensi Hari Ini')
-@section('page-title', 'Data Absensi Hari Ini')
-@section('page-subtitle', 'Kelola data absensi karyawan untuk tanggal ' . \Carbon\Carbon::today()->format('d F Y'))
+@section('title', 'Data Absensi')
+@section('page-title', 'Data Absensi')
+@section('page-subtitle', 'Kelola data absensi karyawan untuk tanggal ' . \Carbon\Carbon::parse($tanggal)->format('d F Y'))
 
 @section('content')
 <div class="space-y-6">
@@ -10,10 +10,38 @@
     <div class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-xl shadow-sm text-white p-6">
         <div class="flex items-center justify-between">
             <div>
-                <h2 class="text-2xl font-bold">Absensi Hari Ini</h2>
-                <p class="text-blue-100 mt-1">{{ \Carbon\Carbon::today()->format('l, d F Y') }}</p>
+                <h2 class="text-2xl font-bold">Data Absensi</h2>
+                <p class="text-blue-100 mt-1">{{ \Carbon\Carbon::parse($tanggal)->format('l, d F Y') }}</p>
+                @if($tanggal === today()->format('Y-m-d'))
+                    <span class="inline-flex items-center px-2 py-1 text-xs bg-green-500 bg-opacity-20 text-green-100 rounded-full mt-2">
+                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                        </svg>
+                        Hari Ini
+                    </span>
+                @elseif(\Carbon\Carbon::parse($tanggal)->isFuture())
+                    <span class="inline-flex items-center px-2 py-1 text-xs bg-yellow-500 bg-opacity-20 text-yellow-100 rounded-full mt-2">
+                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                        </svg>
+                        Masa Depan
+                    </span>
+                @else
+                    <span class="inline-flex items-center px-2 py-1 text-xs bg-blue-500 bg-opacity-20 text-blue-100 rounded-full mt-2">
+                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-8a1 1 0 112 0v4a1 1 0 11-2 0v-4zm1-5a1 1 0 100 2 1 1 0 000-2z" clip-rule="evenodd"></path>
+                        </svg>
+                        Riwayat
+                    </span>
+                @endif
             </div>
-            <div class="text-right">
+            <div class="text-right space-x-3">
+                <button onclick="jumpToToday()" class="px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white rounded-lg transition-colors">
+                    <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v16a2 2 0 002 2z"></path>
+                    </svg>
+                    Hari Ini
+                </button>
                 <button onclick="recalculateLateStatus()" 
                         class="px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white rounded-lg transition-colors">
                     <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -115,7 +143,20 @@
     <!-- Filter & Actions -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <form method="GET" class="space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <!-- Filter Tanggal -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v16a2 2 0 002 2z"></path>
+                        </svg>
+                        Tanggal Absensi
+                    </label>
+                    <input type="date" name="tanggal" value="{{ $tanggal }}" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           onchange="this.form.submit()">
+                </div>
+
                 <!-- Filter Shift -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Shift</label>
@@ -123,7 +164,7 @@
                         <option value="">Semua Shift</option>
                         @foreach($shifts as $shift)
                             <option value="{{ $shift->id }}" {{ request('shift_id') == $shift->id ? 'selected' : '' }}>
-                                {{ $shift->nama }} ({{ $shift->jam_masuk->format('H:i') }} - {{ $shift->jam_keluar->format('H:i') }})
+                                {{ $shift->nama }} ({{ \Carbon\Carbon::parse($shift->jam_masuk)->format('H:i') }} - {{ \Carbon\Carbon::parse($shift->jam_keluar)->format('H:i') }})
                             </option>
                         @endforeach
                     </select>
@@ -199,7 +240,7 @@
                 <p class="text-sm text-amber-700 mt-1">
                     Status keterlambatan otomatis dihitung berdasarkan toleransi shift masing-masing karyawan. 
                     Sistem akan mengupdate status menjadi "Terlambat" jika absen masuk melebihi toleransi yang ditentukan.
-                    Klik "Recalculate Late Status" untuk memperbarui perhitungan keterlambatan.
+                    Klik "Recalculate Late Status" untuk memperbarui perhitungan keterlambatan untuk tanggal {{ \Carbon\Carbon::parse($tanggal)->format('d F Y') }}.
                 </p>
             </div>
         </div>
@@ -245,7 +286,7 @@
                                         {{ $attendance->shift->nama }}
                                     </span>
                                     <div class="text-xs text-gray-500 mt-1">
-                                        {{ $attendance->shift->jam_masuk->format('H:i') }} - {{ $attendance->shift->jam_keluar->format('H:i') }}
+                                        {{ \Carbon\Carbon::parse($attendance->shift->jam_masuk)->format('H:i') }} - {{ \Carbon\Carbon::parse($attendance->shift->jam_keluar)->format('H:i') }}
                                     </div>
                                     <div class="text-xs text-gray-400">
                                         Toleransi: {{ $attendance->shift->toleransi_menit }} menit
@@ -345,7 +386,7 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                                     </svg>
                                     <p class="text-lg font-medium">Tidak ada data absensi</p>
-                                    <p class="text-sm">Belum ada absensi untuk hari ini</p>
+                                    <p class="text-sm">Belum ada absensi untuk tanggal {{ \Carbon\Carbon::parse($tanggal)->format('d F Y') }}</p>
                                 </div>
                             </td>
                         </tr>
@@ -425,7 +466,6 @@
             </div>
             <form id="editStatusForm" method="POST">
                 @csrf
-                @method('POST')
                 <div class="p-6 space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Status Absensi</label>
@@ -553,29 +593,44 @@ function openModal(modalId) {
     document.getElementById(modalId).classList.remove('hidden');
 }
 
-// Recalculate late status function
+// Jump to today function
+function jumpToToday() {
+    const today = new Date().toISOString().split('T')[0];
+    const url = new URL(window.location.href);
+    url.searchParams.set('tanggal', today);
+    window.location.href = url.toString();
+}
+
+// Recalculate late status function - PAKAI FORM REDIRECT (bukan AJAX)
 function recalculateLateStatus() {
-    if (confirm('Yakin ingin menghitung ulang status keterlambatan untuk hari ini?')) {
-        fetch('/admin/absensi/recalculate-late', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('✅ ' + data.message);
-                window.location.reload();
-            } else {
-                alert('❌ ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('❌ Terjadi kesalahan saat recalculate status');
-        });
+    const tanggal = '{{ $tanggal }}';
+    const tanggalFormatted = new Date(tanggal).toLocaleDateString('id-ID', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+    
+    if (confirm(`Yakin ingin menghitung ulang status keterlambatan untuk ${tanggalFormatted}?`)) {
+        // Create form and submit untuk redirect back
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/admin/absensi/recalculate-late';
+        
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = '_token';
+        csrfToken.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        
+        const tanggalInput = document.createElement('input');
+        tanggalInput.type = 'hidden';
+        tanggalInput.name = 'tanggal';
+        tanggalInput.value = tanggal;
+        
+        form.appendChild(csrfToken);
+        form.appendChild(tanggalInput);
+        document.body.appendChild(form);
+        form.submit();
     }
 }
 

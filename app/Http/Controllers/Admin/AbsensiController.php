@@ -12,12 +12,12 @@ use Carbon\Carbon;
 class AbsensiController extends Controller
 {
     /**
-     * Halaman Daftar Absensi - Tampil Hari Ini Saja
+     * Halaman Daftar Absensi - Default Hari Ini, Bisa Filter Tanggal
      */
     public function index(Request $request)
     {
-        // Default hanya hari ini, tidak bisa diubah
-        $tanggal = today()->format('Y-m-d');
+        // Default hari ini, tapi bisa diubah via parameter tanggal
+        $tanggal = $request->tanggal ?? today()->format('Y-m-d');
 
         $query = Attendance::with(['user', 'shift'])
             ->whereDate('tanggal_absen', $tanggal);
@@ -48,20 +48,23 @@ class AbsensiController extends Controller
 
         $absensi = $query->orderBy('created_at', 'desc')->paginate(20);
 
-        // Auto-calculate late status untuk semua absensi hari ini
+        // Auto-calculate late status untuk tanggal yang dipilih
         $this->autoCalculateLateStatus($tanggal);
 
         // Data untuk filter
-        $shifts = Shift::aktif()->get();
-        $karyawan = User::karyawan()->aktif()->get();
+        $shifts = Shift::where('aktif', true)->get();
+        $karyawan = User::where('role', 'karyawan')->where('status', 'aktif')->get();
 
-        // Statistik absensi hari ini
+        // Statistik absensi untuk tanggal yang dipilih
         $statsToday = [
             'total' => Attendance::whereDate('tanggal_absen', $tanggal)->count(),
-            'hadir' => Attendance::whereDate('tanggal_absen', $tanggal)->hadir()->count(),
-            'terlambat' => Attendance::whereDate('tanggal_absen', $tanggal)->terlambat()->count(),
+            'hadir' => Attendance::whereDate('tanggal_absen', $tanggal)->whereIn('status_absen', ['hadir', 'terlambat'])->count(),
+            'terlambat' => Attendance::whereDate('tanggal_absen', $tanggal)->where('status_absen', 'terlambat')->count(),
             'tidak_hadir' => Attendance::whereDate('tanggal_absen', $tanggal)->where('status_absen', 'tidak_hadir')->count(),
-            'menunggu_approval' => Attendance::whereDate('tanggal_absen', $tanggal)->menungguApproval()->count(),
+            'menunggu_approval' => Attendance::whereDate('tanggal_absen', $tanggal)
+                ->where(function ($q) {
+                    $q->where('status_masuk', 'menunggu')->orWhere('status_keluar', 'menunggu');
+                })->count(),
             'izin' => Attendance::whereDate('tanggal_absen', $tanggal)->where('status_absen', 'izin')->count(),
         ];
 
@@ -75,51 +78,80 @@ class AbsensiController extends Controller
     }
 
     /**
-     * Auto calculate late status berdasarkan toleransi shift
+     * Auto calculate late status berdasarkan toleransi shift + auto set tidak_hadir
      */
     private function autoCalculateLateStatus($tanggal)
     {
-        // Get all attendances today that have jam_masuk and status is not izin
+        // Get all attendances untuk tanggal yang dipilih
         $attendances = Attendance::with('shift')
             ->whereDate('tanggal_absen', $tanggal)
-            ->whereNotNull('jam_masuk')
-            ->whereNotIn('status_absen', ['izin'])
             ->get();
+
+        $now = now();
+        $targetDate = Carbon::parse($tanggal);
 
         foreach ($attendances as $attendance) {
             if (!$attendance->shift)
                 continue;
 
-            $jamMasukActual = Carbon::parse($attendance->jam_masuk);
-            $jamMasukScheduled = Carbon::parse($attendance->tanggal_absen->format('Y-m-d') . ' ' . $attendance->shift->jam_masuk->format('H:i:s'));
-            $toleransiMenit = $attendance->shift->toleransi_menit;
+            // 1. LOGIC UNTUK TIDAK_HADIR
+            // Kalau belum ada jam_masuk dan status masih menunggu
+            if (is_null($attendance->jam_masuk) && $attendance->status_masuk === 'menunggu') {
 
-            // Hitung berapa menit terlambat
-            $menitTerlambat = 0;
-            $statusAbsen = 'hadir';
+                $shouldMarkAbsent = false;
 
-            if ($jamMasukActual->gt($jamMasukScheduled->addMinutes($toleransiMenit))) {
-                $menitTerlambat = $jamMasukActual->diffInMinutes($jamMasukScheduled);
-                $statusAbsen = 'terlambat';
+                if ($targetDate->isPast()) {
+                    // Kalau tanggal di masa lalu, otomatis tidak hadir
+                    $shouldMarkAbsent = true;
+                } elseif ($targetDate->isToday()) {
+                    // Kalau hari ini, cek apakah jam shift sudah berakhir
+                    $jamKeluarShift = Carbon::parse($targetDate->format('Y-m-d') . ' ' . $attendance->shift->jam_keluar->format('H:i:s'));
+
+                    // Handle shift malam (jam keluar < jam masuk)
+                    if ($attendance->shift->jam_keluar < $attendance->shift->jam_masuk) {
+                        $jamKeluarShift->addDay(); // Shift malam, jam keluar besok
+                    }
+
+                    if ($now->gt($jamKeluarShift)) {
+                        $shouldMarkAbsent = true;
+                    }
+                }
+
+                if ($shouldMarkAbsent) {
+                    $attendance->update([
+                        'status_absen' => 'tidak_hadir',
+                        'status_masuk' => 'ditolak',
+                        'menit_terlambat' => 0,
+                        'catatan_admin' => 'Auto: Tidak hadir - tidak absen sampai jam kerja berakhir'
+                    ]);
+                    continue; // Skip ke attendance selanjutnya
+                }
             }
 
-            // Update hanya jika ada perubahan
-            if ($attendance->status_absen !== $statusAbsen || $attendance->menit_terlambat !== $menitTerlambat) {
-                $attendance->update([
-                    'status_absen' => $statusAbsen,
-                    'menit_terlambat' => $menitTerlambat,
-                ]);
+            // 2. LOGIC UNTUK HITUNG KETERLAMBATAN (hanya yang sudah ada jam_masuk)
+            if (!is_null($attendance->jam_masuk) && !in_array($attendance->status_absen, ['izin', 'tidak_hadir'])) {
+                $jamMasukActual = Carbon::parse($attendance->jam_masuk);
+                $jamMasukScheduled = Carbon::parse($attendance->tanggal_absen->format('Y-m-d') . ' ' . $attendance->shift->jam_masuk->format('H:i:s'));
+                $toleransiMenit = $attendance->shift->toleransi_menit;
+
+                // Hitung berapa menit terlambat
+                $menitTerlambat = 0;
+                $statusAbsen = 'hadir';
+
+                if ($jamMasukActual->gt($jamMasukScheduled->addMinutes($toleransiMenit))) {
+                    $menitTerlambat = $jamMasukActual->diffInMinutes($jamMasukScheduled);
+                    $statusAbsen = 'terlambat';
+                }
+
+                // Update hanya jika ada perubahan
+                if ($attendance->status_absen !== $statusAbsen || $attendance->menit_terlambat !== $menitTerlambat) {
+                    $attendance->update([
+                        'status_absen' => $statusAbsen,
+                        'menit_terlambat' => $menitTerlambat,
+                    ]);
+                }
             }
         }
-    }
-
-    /**
-     * Detail Absensi (untuk halaman penuh jika diperlukan)
-     */
-    public function show(Attendance $attendance)
-    {
-        $attendance->load(['user', 'shift']);
-        return view('admin.absensi.show', compact('attendance'));
     }
 
     /**
@@ -194,14 +226,6 @@ class AbsensiController extends Controller
             ]);
         }
 
-        if ($request->ajax()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Absen masuk berhasil disetujui!' .
-                    ($attendance->status_absen === 'terlambat' ? ' (Terlambat ' . $attendance->menit_terlambat . ' menit)' : '')
-            ]);
-        }
-
         return redirect()->back()->with('success', 'Absen masuk berhasil disetujui!');
     }
 
@@ -218,13 +242,6 @@ class AbsensiController extends Controller
             'status_masuk' => 'ditolak',
             'catatan_admin' => $request->catatan_admin,
         ]);
-
-        if ($request->ajax()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Absen masuk berhasil ditolak!'
-            ]);
-        }
 
         return redirect()->back()->with('success', 'Absen masuk berhasil ditolak!');
     }
@@ -243,13 +260,6 @@ class AbsensiController extends Controller
             'catatan_admin' => $request->catatan_admin,
         ]);
 
-        if ($request->ajax()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Absen keluar berhasil disetujui!'
-            ]);
-        }
-
         return redirect()->back()->with('success', 'Absen keluar berhasil disetujui!');
     }
 
@@ -266,13 +276,6 @@ class AbsensiController extends Controller
             'status_keluar' => 'ditolak',
             'catatan_admin' => $request->catatan_admin,
         ]);
-
-        if ($request->ajax()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Absen keluar berhasil ditolak!'
-            ]);
-        }
 
         return redirect()->back()->with('success', 'Absen keluar berhasil ditolak!');
     }
@@ -296,32 +299,23 @@ class AbsensiController extends Controller
             'catatan_admin' => $request->catatan_admin,
         ]);
 
-        if ($request->ajax()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Status absensi berhasil diperbarui!'
-            ]);
-        }
-
         return redirect()->back()->with('success', 'Status absensi berhasil diperbarui!');
     }
 
     /**
-     * Force recalculate late status untuk hari ini
+     * Force recalculate late status untuk tanggal yang dipilih - REDIRECT BACK
      */
-    public function recalculateLateStatus()
+    public function recalculateLateStatus(Request $request)
     {
-        $tanggal = today()->format('Y-m-d');
+        $tanggal = $request->tanggal ?? today()->format('Y-m-d');
         $this->autoCalculateLateStatus($tanggal);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Status keterlambatan berhasil diperbarui untuk hari ini!'
-        ]);
+        $tanggalFormatted = Carbon::parse($tanggal)->format('d F Y');
+        return redirect()->back()->with('success', "Status keterlambatan berhasil diperbarui untuk tanggal {$tanggalFormatted}!");
     }
 
     /**
-     * Export Absensi ke Excel/CSV
+     * Export Absensi ke CSV
      */
     public function export(Request $request)
     {
@@ -336,19 +330,7 @@ class AbsensiController extends Controller
             ->orderBy('tanggal_absen', 'desc')
             ->get();
 
-        if ($request->format === 'csv') {
-            return $this->exportToCsv($absensi, $request->tanggal_mulai, $request->tanggal_selesai);
-        } else {
-            return $this->exportToExcel($absensi, $request->tanggal_mulai, $request->tanggal_selesai);
-        }
-    }
-
-    /**
-     * Export ke CSV
-     */
-    private function exportToCsv($absensi, $tanggalMulai, $tanggalSelesai)
-    {
-        $filename = 'absensi_' . $tanggalMulai . '_' . $tanggalSelesai . '.csv';
+        $filename = 'absensi_' . $request->tanggal_mulai . '_' . $request->tanggal_selesai . '.csv';
 
         $headers = [
             'Content-Type' => 'text/csv',
@@ -402,16 +384,6 @@ class AbsensiController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
-    }
-
-    /**
-     * Export ke Excel (placeholder - implementasi bisa pakai PhpSpreadsheet)
-     */
-    private function exportToExcel($absensi, $tanggalMulai, $tanggalSelesai)
-    {
-        // Untuk sementara redirect ke CSV
-        // Implementasi Excel bisa ditambahkan nanti dengan PhpSpreadsheet
-        return $this->exportToCsv($absensi, $tanggalMulai, $tanggalSelesai);
     }
 
     /**
@@ -522,82 +494,6 @@ class AbsensiController extends Controller
                 break;
         }
 
-        if ($request->ajax()) {
-            return response()->json([
-                'success' => true,
-                'message' => $message
-            ]);
-        }
-
         return redirect()->back()->with('success', $message);
-    }
-
-    /**
-     * Create manual attendance (jika diperlukan)
-     */
-    public function store(Request $request)
-    {
-        $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'shift_id' => 'required|exists:shifts,id',
-            'tanggal_absen' => 'required|date',
-            'jam_masuk' => 'nullable|date_format:H:i',
-            'jam_keluar' => 'nullable|date_format:H:i',
-            'status_absen' => 'required|in:hadir,terlambat,tidak_hadir,izin',
-            'catatan_admin' => 'nullable|string|max:500',
-        ]);
-
-        // Cek apakah sudah ada absensi untuk user dan tanggal tersebut
-        $existingAttendance = Attendance::where('user_id', $request->user_id)
-            ->where('tanggal_absen', $request->tanggal_absen)
-            ->first();
-
-        if ($existingAttendance) {
-            return redirect()->back()->with('error', 'Absensi untuk karyawan ini pada tanggal tersebut sudah ada!');
-        }
-
-        // Auto calculate late status jika ada jam_masuk
-        $menitTerlambat = 0;
-        $statusAbsen = $request->status_absen;
-
-        if ($request->jam_masuk && $statusAbsen !== 'izin') {
-            $shift = Shift::find($request->shift_id);
-            if ($shift) {
-                $jamMasukActual = Carbon::parse($request->tanggal_absen . ' ' . $request->jam_masuk);
-                $jamMasukScheduled = Carbon::parse($request->tanggal_absen . ' ' . $shift->jam_masuk->format('H:i:s'));
-                $toleransiMenit = $shift->toleransi_menit;
-
-                if ($jamMasukActual->gt($jamMasukScheduled->addMinutes($toleransiMenit))) {
-                    $menitTerlambat = $jamMasukActual->diffInMinutes($jamMasukScheduled);
-                    $statusAbsen = 'terlambat';
-                } else {
-                    $statusAbsen = 'hadir';
-                }
-            }
-        }
-
-        $attendance = Attendance::create([
-            'user_id' => $request->user_id,
-            'shift_id' => $request->shift_id,
-            'tanggal_absen' => $request->tanggal_absen,
-            'jam_masuk' => $request->jam_masuk,
-            'jam_keluar' => $request->jam_keluar,
-            'status_absen' => $statusAbsen,
-            'menit_terlambat' => $menitTerlambat,
-            'status_masuk' => 'disetujui',
-            'status_keluar' => $request->jam_keluar ? 'disetujui' : 'menunggu',
-            'catatan_admin' => $request->catatan_admin,
-        ]);
-
-        if ($request->ajax()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Absensi manual berhasil ditambahkan!' .
-                    ($statusAbsen === 'terlambat' ? ' (Terlambat ' . $menitTerlambat . ' menit)' : ''),
-                'data' => $attendance
-            ]);
-        }
-
-        return redirect()->back()->with('success', 'Absensi manual berhasil ditambahkan!');
     }
 }

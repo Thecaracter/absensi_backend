@@ -9,11 +9,6 @@ use App\Http\Controllers\Admin\IzinController;
 use App\Http\Controllers\Admin\JadwalController;
 use App\Http\Controllers\Admin\LaporanController;
 
-/*
-|--------------------------------------------------------------------------
-| Web Routes - FIXED HTTP METHODS untuk Izin Management
-|--------------------------------------------------------------------------
-*/
 
 // Redirect root ke login
 Route::get('/', function () {
@@ -53,38 +48,39 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::delete('/{karyawan}', [KaryawanController::class, 'destroy'])->name('destroy');
     });
 
-    // Absensi Management
+    // SIMPLE: Absensi Management - NO API ENDPOINTS, STANDARD LARAVEL ONLY
     Route::prefix('absensi')->name('absensi.')->group(function () {
+        // Main index page dengan pagination Laravel standard
         Route::get('/', [AbsensiController::class, 'index'])->name('index');
 
-        // JSON endpoint
-        Route::get('/{attendance}/json', [AbsensiController::class, 'getAttendanceJson'])->name('json');
-
+        // CRUD operations - semua pakai redirect
         Route::post('/', [AbsensiController::class, 'store'])->name('store');
 
-        // Approval actions
+        // JSON endpoint HANYA untuk modal detail (UI only, bukan data)
+        Route::get('/{attendance}/json', [AbsensiController::class, 'getAttendanceJson'])->name('json');
+
+        // Approval operations - semua pakai REDIRECT BACK
         Route::post('/{attendance}/approve-masuk', [AbsensiController::class, 'approveMasuk'])->name('approve-masuk');
         Route::post('/{attendance}/reject-masuk', [AbsensiController::class, 'rejectMasuk'])->name('reject-masuk');
         Route::post('/{attendance}/approve-keluar', [AbsensiController::class, 'approveKeluar'])->name('approve-keluar');
         Route::post('/{attendance}/reject-keluar', [AbsensiController::class, 'rejectKeluar'])->name('reject-keluar');
         Route::post('/{attendance}/update-status', [AbsensiController::class, 'updateStatus'])->name('update-status');
 
-        // Bulk actions dan export
+        // Bulk operations - pakai REDIRECT BACK
         Route::post('/bulk-action', [AbsensiController::class, 'bulkAction'])->name('bulk-action');
-        Route::post('/export', [AbsensiController::class, 'export'])->name('export');
+
+        // Recalculate - pakai REDIRECT BACK (bukan AJAX)
         Route::post('/recalculate-late', [AbsensiController::class, 'recalculateLateStatus'])->name('recalculate-late');
 
-        // Route parameter biasa di akhir
-        Route::get('/{attendance}', [AbsensiController::class, 'show'])->name('show');
-        Route::put('/{attendance}', [AbsensiController::class, 'update'])->name('update');
-        Route::delete('/{attendance}', [AbsensiController::class, 'destroy'])->name('destroy');
+        // Export
+        Route::post('/export', [AbsensiController::class, 'export'])->name('export');
     });
 
     // Izin/Leave Management - FIXED dengan PATCH method untuk approve/reject/cancel
     Route::prefix('izin')->name('izin.')->group(function () {
         Route::get('/', [IzinController::class, 'index'])->name('index');
 
-        // JSON endpoints untuk AJAX - harus sebelum route parameter biasa
+        // JSON endpoints untuk AJAX - hanya untuk modal UI
         Route::get('/{leaveRequest}/json', [IzinController::class, 'getLeaveRequestJson'])->name('json');
 
         // CRUD operations
@@ -165,30 +161,14 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     });
 });
 
-// User/Employee Routes (untuk karyawan biasa jika diperlukan)
-Route::middleware(['auth', 'user'])->prefix('user')->name('user.')->group(function () {
-    // Dashboard karyawan
-    Route::get('/dashboard', [UserController::class, 'dashboard'])->name('dashboard');
-
-    // Absensi karyawan
-    Route::get('/absensi', [UserController::class, 'absensi'])->name('absensi');
-    Route::post('/absensi/masuk', [UserController::class, 'absensiMasuk'])->name('absensi.masuk');
-    Route::post('/absensi/keluar', [UserController::class, 'absensiKeluar'])->name('absensi.keluar');
-
-    // Izin karyawan
-    Route::get('/izin', [UserController::class, 'izin'])->name('izin');
-    Route::post('/izin', [UserController::class, 'storeIzin'])->name('izin.store');
-
-    // Profile karyawan
-    Route::get('/profile', [UserController::class, 'profile'])->name('profile');
-    Route::put('/profile', [UserController::class, 'updateProfile'])->name('profile.update');
+// Karyawan Routes (jika diperlukan nanti)
+Route::middleware(['auth', 'karyawan'])->prefix('karyawan')->name('karyawan.')->group(function () {
+    Route::get('/dashboard', function () {
+        return view('karyawan.dashboard');
+    })->name('dashboard');
 });
-
-
 
 // Error Pages (Custom error handling)
 Route::fallback(function () {
     return response()->view('errors.404', [], 404);
 });
-
-

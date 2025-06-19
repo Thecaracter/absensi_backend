@@ -65,7 +65,10 @@ class IzinController extends Controller
             $query->whereBetween('tanggal_mulai', [$request->tanggal_mulai, $request->tanggal_selesai]);
         }
 
-        $izin = $query->orderBy('created_at', 'desc')->paginate(20);
+        // FIXED: Urutkan berdasarkan tanggal permintaan cuti (tanggal_mulai) kemudian tanggal pengajuan
+        $izin = $query->orderBy('tanggal_mulai', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
 
         // Data untuk filter
         $karyawan = User::karyawan()->aktif()->get();
@@ -531,7 +534,10 @@ class IzinController extends Controller
             $query->where('jenis_izin', $request->jenis_izin);
         }
 
-        $izin = $query->orderBy('created_at', 'desc')->get();
+        // FIXED: Export juga diurutkan berdasarkan tanggal permintaan cuti
+        $izin = $query->orderBy('tanggal_mulai', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get();
 
         return $this->exportToCsv($izin, $request->tanggal_mulai ?? 'semua', $request->tanggal_selesai ?? 'semua');
     }
