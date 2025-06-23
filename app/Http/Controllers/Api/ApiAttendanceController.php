@@ -14,7 +14,7 @@ use Carbon\Carbon;
 class ApiAttendanceController extends Controller
 {
     /**
-     * GET ABSENSI HARI INI
+     * GET ABSENSI HARI INI - VERSION TANPA MODEL JADWAL
      */
     public function todayAttendance()
     {
@@ -22,59 +22,114 @@ class ApiAttendanceController extends Controller
             $user = Auth::user();
             $today = today();
 
+            // Cek attendance hari ini
             $attendance = Attendance::where('user_id', $user->id)
                 ->where('tanggal_absen', $today)
                 ->with('shift')
                 ->first();
 
-            if (!$attendance) {
+            // Jika sudah ada attendance
+            if ($attendance) {
+                $attendanceData = [
+                    'id' => $attendance->id,
+                    'tanggal_absen' => $attendance->tanggal_absen->format('Y-m-d'),
+                    'shift' => $attendance->shift ? [
+                        'id' => $attendance->shift->id,
+                        'nama' => $attendance->shift->nama,
+                        'jam_masuk' => $attendance->shift->jam_masuk->format('H:i'),
+                        'jam_keluar' => $attendance->shift->jam_keluar->format('H:i'),
+                        'toleransi_menit' => $attendance->shift->toleransi_menit
+                    ] : null,
+                    'jam_masuk' => $attendance->jam_masuk ? Carbon::parse($attendance->jam_masuk)->format('H:i:s') : null,
+                    'jam_keluar' => $attendance->jam_keluar ? Carbon::parse($attendance->jam_keluar)->format('H:i:s') : null,
+                    'foto_masuk_url' => $attendance->foto_masuk_url,
+                    'foto_keluar_url' => $attendance->foto_keluar_url,
+                    'latitude_masuk' => $attendance->latitude_masuk,
+                    'longitude_masuk' => $attendance->longitude_masuk,
+                    'latitude_keluar' => $attendance->latitude_keluar,
+                    'longitude_keluar' => $attendance->longitude_keluar,
+                    'status_absen' => $attendance->status_absen,
+                    'status_masuk' => $attendance->status_masuk,
+                    'status_keluar' => $attendance->status_keluar,
+                    'menit_terlambat' => $attendance->menit_terlambat,
+                    'menit_lembur' => $attendance->menit_lembur,
+                    'catatan_admin' => $attendance->catatan_admin,
+                    'sudah_check_in' => !is_null($attendance->jam_masuk),
+                    'sudah_check_out' => !is_null($attendance->jam_keluar),
+                    'dapat_check_out' => !is_null($attendance->jam_masuk) && is_null($attendance->jam_keluar)
+                ];
+
                 return response()->json([
                     'success' => true,
-                    'message' => 'Belum ada data absensi hari ini',
-                    'data' => null
+                    'message' => 'Data absensi hari ini berhasil diambil',
+                    'data' => $attendanceData
                 ]);
             }
 
-            $attendanceData = [
-                'id' => $attendance->id,
-                'tanggal_absen' => $attendance->tanggal_absen->format('Y-m-d'),
-                'shift' => [
-                    'id' => $attendance->shift->id,
-                    'nama' => $attendance->shift->nama,
-                    'jam_masuk' => $attendance->shift->jam_masuk->format('H:i'),
-                    'jam_keluar' => $attendance->shift->jam_keluar->format('H:i'),
-                    'toleransi_menit' => $attendance->shift->toleransi_menit
-                ],
-                'jam_masuk' => $attendance->jam_masuk ? Carbon::parse($attendance->jam_masuk)->format('H:i:s') : null,
-                'jam_keluar' => $attendance->jam_keluar ? Carbon::parse($attendance->jam_keluar)->format('H:i:s') : null,
-                'foto_masuk_url' => $attendance->foto_masuk_url,
-                'foto_keluar_url' => $attendance->foto_keluar_url,
-                'latitude_masuk' => $attendance->latitude_masuk,
-                'longitude_masuk' => $attendance->longitude_masuk,
-                'latitude_keluar' => $attendance->latitude_keluar,
-                'longitude_keluar' => $attendance->longitude_keluar,
-                'status_absen' => $attendance->status_absen,
-                'status_masuk' => $attendance->status_masuk,
-                'status_keluar' => $attendance->status_keluar,
-                'menit_terlambat' => $attendance->menit_terlambat,
-                'menit_lembur' => $attendance->menit_lembur,
-                'catatan_admin' => $attendance->catatan_admin,
-                'sudah_check_in' => !is_null($attendance->jam_masuk),
-                'sudah_check_out' => !is_null($attendance->jam_keluar),
-                'dapat_check_out' => !is_null($attendance->jam_masuk) && is_null($attendance->jam_keluar)
-            ];
+            // Jika belum ada attendance, ambil shift default dari user (opsional)
+            // Atau buat shift default jika ada kebutuhan khusus
+            $defaultShift = null;
 
+            // Opsi 1: Ambil shift pertama yang aktif sebagai default
+            try {
+                $defaultShift = Shift::where('aktif', true)->first();
+            } catch (\Exception $e) {
+                // Jika tidak ada shift aktif, skip
+            }
+
+            // Jika ada shift default, buat data template
+            if ($defaultShift) {
+                $attendanceData = [
+                    'id' => null,
+                    'tanggal_absen' => $today->format('Y-m-d'),
+                    'shift' => [
+                        'id' => $defaultShift->id,
+                        'nama' => $defaultShift->nama,
+                        'jam_masuk' => $defaultShift->jam_masuk->format('H:i'),
+                        'jam_keluar' => $defaultShift->jam_keluar->format('H:i'),
+                        'toleransi_menit' => $defaultShift->toleransi_menit
+                    ],
+                    'jam_masuk' => null,
+                    'jam_keluar' => null,
+                    'foto_masuk_url' => null,
+                    'foto_keluar_url' => null,
+                    'latitude_masuk' => null,
+                    'longitude_masuk' => null,
+                    'latitude_keluar' => null,
+                    'longitude_keluar' => null,
+                    'status_absen' => null,
+                    'status_masuk' => null,
+                    'status_keluar' => null,
+                    'menit_terlambat' => null,
+                    'menit_lembur' => null,
+                    'catatan_admin' => null,
+                    'sudah_check_in' => false,
+                    'sudah_check_out' => false,
+                    'dapat_check_out' => false
+                ];
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Shift default tersedia untuk hari ini',
+                    'data' => $attendanceData
+                ]);
+            }
+
+            // Jika tidak ada attendance dan tidak ada shift default
             return response()->json([
                 'success' => true,
-                'message' => 'Data absensi hari ini berhasil diambil',
-                'data' => $attendanceData
+                'message' => 'Belum ada data absensi hari ini',
+                'data' => null
             ]);
 
         } catch (\Exception $e) {
+            \Log::error('todayAttendance Error: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan sistem',
-                'error' => $e->getMessage()
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
             ], 500);
         }
     }
