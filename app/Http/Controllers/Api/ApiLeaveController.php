@@ -22,7 +22,7 @@ class ApiLeaveController extends Controller
 
             $limit = $request->limit ?? 20;
             $page = $request->page ?? 1;
-            $status = $request->status; // menunggu, disetujui, ditolak
+            $status = $request->status;
             $tahun = $request->tahun ?? now()->year;
 
             $query = LeaveRequest::where('user_id', $user->id)
@@ -30,7 +30,7 @@ class ApiLeaveController extends Controller
                 ->whereYear('tanggal_mulai', $tahun)
                 ->orderBy('created_at', 'desc');
 
-            // Filter by status if provided
+
             if ($status) {
                 $query->where('status', $status);
             }
@@ -110,7 +110,7 @@ class ApiLeaveController extends Controller
 
             $user = Auth::user();
 
-            // Check for overlapping leave requests
+
             $overlapping = LeaveRequest::where('user_id', $user->id)
                 ->where('status', '!=', 'ditolak')
                 ->where(function ($query) use ($request) {
@@ -139,7 +139,7 @@ class ApiLeaveController extends Controller
                 'status' => 'menunggu',
             ];
 
-            // Handle file upload
+
             if ($request->hasFile('lampiran')) {
                 $lampiranPath = $this->uploadLampiran($request->file('lampiran'), $user->id);
                 $leaveData['lampiran'] = $lampiranPath;
@@ -147,7 +147,7 @@ class ApiLeaveController extends Controller
 
             $leaveRequest = LeaveRequest::create($leaveData);
 
-            // Format response
+
             $responseData = [
                 'id' => $leaveRequest->id,
                 'jenis_izin' => $leaveRequest->jenis_izin,
@@ -277,7 +277,7 @@ class ApiLeaveController extends Controller
                 ], 422);
             }
 
-            // Check for overlapping leave requests (exclude current request)
+
             $overlapping = LeaveRequest::where('user_id', $user->id)
                 ->where('id', '!=', $id)
                 ->where('status', '!=', 'ditolak')
@@ -305,9 +305,9 @@ class ApiLeaveController extends Controller
                 'alasan' => $request->alasan,
             ];
 
-            // Handle file upload
+
             if ($request->hasFile('lampiran')) {
-                // Delete old file if exists
+
                 if ($leaveRequest->lampiran && File::exists(public_path($leaveRequest->lampiran))) {
                     File::delete(public_path($leaveRequest->lampiran));
                 }
@@ -318,7 +318,7 @@ class ApiLeaveController extends Controller
 
             $leaveRequest->update($updateData);
 
-            // Format response
+
             $responseData = [
                 'id' => $leaveRequest->id,
                 'jenis_izin' => $leaveRequest->jenis_izin,
@@ -372,7 +372,7 @@ class ApiLeaveController extends Controller
                 ], 422);
             }
 
-            // Delete attachment file if exists
+
             if ($leaveRequest->lampiran && File::exists(public_path($leaveRequest->lampiran))) {
                 File::delete(public_path($leaveRequest->lampiran));
             }
@@ -424,7 +424,7 @@ class ApiLeaveController extends Controller
                     ->sum('total_hari'),
             ];
 
-            // Kuota cuti per tahun (misal 12 hari)
+
             $kuotaCuti = 12;
             $stats['kuota_cuti'] = $kuotaCuti;
             $stats['sisa_kuota'] = max(0, $kuotaCuti - $stats['total_hari_izin']);

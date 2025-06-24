@@ -30,7 +30,7 @@ class ApiAuthController extends Controller
                 ], 422);
             }
 
-            // Cek user dan validasi role karyawan
+
             $user = User::where('email', $request->email)
                 ->where('role', 'karyawan')
                 ->where('status', 'aktif')
@@ -43,13 +43,13 @@ class ApiAuthController extends Controller
                 ], 401);
             }
 
-            // Hapus token lama (optional)
+
             $user->tokens()->delete();
 
-            // Generate token baru
+
             $token = $user->createToken('mobile-app')->plainTextToken;
 
-            // Get user data dengan shift info dari attendance terbaru
+
             $latestAttendance = $user->attendances()->with('shift')->latest('tanggal_absen')->first();
 
             $userData = [
@@ -64,7 +64,7 @@ class ApiAuthController extends Controller
                 'shift' => null
             ];
 
-            // Include shift info if exists
+
             if ($latestAttendance && $latestAttendance->shift) {
                 $userData['shift'] = [
                     'id' => $latestAttendance->shift->id,
@@ -100,7 +100,7 @@ class ApiAuthController extends Controller
     public function logout(Request $request)
     {
         try {
-            // Hapus token saat ini
+
             $request->user()->currentAccessToken()->delete();
 
             return response()->json([
@@ -125,7 +125,7 @@ class ApiAuthController extends Controller
         try {
             $user = $request->user();
 
-            // Get shift info dari attendance terbaru
+
             $latestAttendance = $user->attendances()->with('shift')->latest('tanggal_absen')->first();
 
             $userData = [
@@ -140,7 +140,7 @@ class ApiAuthController extends Controller
                 'shift' => null
             ];
 
-            // Include shift info if exists
+
             if ($latestAttendance && $latestAttendance->shift) {
                 $userData['shift'] = [
                     'id' => $latestAttendance->shift->id,
@@ -174,10 +174,10 @@ class ApiAuthController extends Controller
         try {
             $user = $request->user();
 
-            // Hapus token lama
+
             $request->user()->currentAccessToken()->delete();
 
-            // Generate token baru
+
             $token = $user->createToken('mobile-app')->plainTextToken;
 
             return response()->json([

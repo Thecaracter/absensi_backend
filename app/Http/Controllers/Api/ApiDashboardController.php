@@ -21,7 +21,7 @@ class ApiDashboardController extends Controller
             $today = today();
             $currentMonth = now();
 
-            // 1. ABSENSI HARI INI
+
             $todayAttendance = Attendance::where('user_id', $user->id)
                 ->where('tanggal_absen', $today)
                 ->with('shift')
@@ -43,7 +43,7 @@ class ApiDashboardController extends Controller
                 ] : null
             ];
 
-            // 2. STATISTIK ABSENSI BULAN INI
+
             $attendanceStats = [
                 'total_hari_kerja' => Attendance::where('user_id', $user->id)
                     ->whereMonth('tanggal_absen', $currentMonth->month)
@@ -64,7 +64,7 @@ class ApiDashboardController extends Controller
             $attendanceStats['tingkat_kehadiran'] = $attendanceStats['total_hari_kerja'] > 0 ?
                 round(($attendanceStats['total_hadir'] / $attendanceStats['total_hari_kerja']) * 100, 1) : 0;
 
-            // 3. STATISTIK IZIN
+
             $leaveStats = [
                 'total_pengajuan_bulan_ini' => LeaveRequest::where('user_id', $user->id)
                     ->whereMonth('created_at', $currentMonth->month)
@@ -77,12 +77,12 @@ class ApiDashboardController extends Controller
                     ->whereYear('created_at', $currentMonth->year)
                     ->where('status', 'disetujui')
                     ->sum('total_hari'),
-                'kuota_cuti' => 12, // bisa diambil dari setting
+                'kuota_cuti' => 12,
             ];
 
             $leaveStats['sisa_kuota'] = max(0, $leaveStats['kuota_cuti'] - $leaveStats['total_hari_izin_tahun_ini']);
 
-            // 4. RIWAYAT ABSENSI 7 HARI TERAKHIR (untuk grafik mini)
+
             $recentAttendances = Attendance::where('user_id', $user->id)
                 ->whereBetween('tanggal_absen', [
                     $today->copy()->subDays(6),
@@ -101,10 +101,10 @@ class ApiDashboardController extends Controller
                     ];
                 });
 
-            // 5. NOTIFIKASI/REMINDER
+
             $notifications = [];
 
-            // Reminder check-in jika belum
+
             if (!$attendanceToday['sudah_check_in'] && now()->format('H') >= 8) {
                 $notifications[] = [
                     'type' => 'warning',
@@ -113,7 +113,7 @@ class ApiDashboardController extends Controller
                 ];
             }
 
-            // Reminder check-out jika sudah check-in tapi belum check-out
+
             if ($attendanceToday['sudah_check_in'] && !$attendanceToday['sudah_check_out'] && now()->format('H') >= 17) {
                 $notifications[] = [
                     'type' => 'info',
@@ -122,7 +122,7 @@ class ApiDashboardController extends Controller
                 ];
             }
 
-            // Info izin menunggu approval
+
             if ($leaveStats['menunggu_approval'] > 0) {
                 $notifications[] = [
                     'type' => 'info',
@@ -171,7 +171,7 @@ class ApiDashboardController extends Controller
             $user = Auth::user();
             $currentMonth = now();
 
-            // Statistik bulan ini
+
             $thisMonth = [
                 'hadir' => Attendance::where('user_id', $user->id)
                     ->whereMonth('tanggal_absen', $currentMonth->month)

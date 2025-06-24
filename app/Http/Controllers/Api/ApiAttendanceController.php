@@ -23,13 +23,13 @@ class ApiAttendanceController extends Controller
             $user = Auth::user();
             $today = today();
 
-            // Cek attendance hari ini
+
             $attendance = Attendance::where('user_id', $user->id)
                 ->where('tanggal_absen', $today)
                 ->with('shift')
                 ->first();
 
-            // JIKA SUDAH ADA ATTENDANCE - return full data dengan status lengkap
+
             if ($attendance) {
                 $attendanceData = [
                     'id' => $attendance->id,
@@ -56,19 +56,19 @@ class ApiAttendanceController extends Controller
                     'menit_lembur' => $attendance->menit_lembur,
                     'catatan_admin' => $attendance->catatan_admin,
 
-                    // STATUS UNTUK UI - INI YANG PENTING!
+
                     'sudah_check_in' => !is_null($attendance->jam_masuk),
                     'sudah_check_out' => !is_null($attendance->jam_keluar),
                     'dapat_check_out' => !is_null($attendance->jam_masuk) && is_null($attendance->jam_keluar),
 
-                    // FORMATTED DATA UNTUK DISPLAY
+
                     'status_absen_text' => $this->getStatusAbsenText($attendance->status_absen),
                     'jam_masuk_formatted' => $attendance->jam_masuk ? Carbon::parse($attendance->jam_masuk)->format('H:i') : 'Belum Check In',
                     'jam_keluar_formatted' => $attendance->jam_keluar ? Carbon::parse($attendance->jam_keluar)->format('H:i') : 'Belum Check Out',
                     'durasi_kerja_formatted' => $this->getDurasiKerjaFormatted($attendance),
                     'terlambat_text' => $attendance->menit_terlambat > 0 ? "Terlambat {$attendance->menit_terlambat} menit" : '',
 
-                    // STATUS COMPLETION
+
                     'is_complete' => !is_null($attendance->jam_masuk) && !is_null($attendance->jam_keluar),
                     'attendance_stage' => $this->getAttendanceStage($attendance),
                 ];
@@ -80,17 +80,17 @@ class ApiAttendanceController extends Controller
                 ]);
             }
 
-            // JIKA BELUM ADA ATTENDANCE - return template dengan shift default
+
             $defaultShift = null;
 
-            // Opsi 1: Ambil shift pertama yang aktif sebagai default
+
             try {
                 $defaultShift = Shift::where('aktif', true)->first();
             } catch (\Exception $e) {
-                // Jika tidak ada shift aktif, skip
+
             }
 
-            // Template untuk yang belum absen
+
             $attendanceData = [
                 'id' => null,
                 'tanggal_absen' => $today->format('Y-m-d'),
@@ -116,21 +116,21 @@ class ApiAttendanceController extends Controller
                 'menit_lembur' => null,
                 'catatan_admin' => null,
 
-                // STATUS UNTUK UI
+
                 'sudah_check_in' => false,
                 'sudah_check_out' => false,
                 'dapat_check_out' => false,
 
-                // FORMATTED DATA
+
                 'status_absen_text' => 'Belum Absen',
                 'jam_masuk_formatted' => 'Belum Check In',
                 'jam_keluar_formatted' => 'Belum Check Out',
                 'durasi_kerja_formatted' => null,
                 'terlambat_text' => '',
 
-                // STATUS
+
                 'is_complete' => false,
-                'attendance_stage' => 'not_started', // not_started, checked_in, completed
+                'attendance_stage' => 'not_started',
             ];
 
             if ($defaultShift) {
@@ -141,7 +141,7 @@ class ApiAttendanceController extends Controller
                 ]);
             }
 
-            // Jika tidak ada shift default, tetap return template kosong
+
             return response()->json([
                 'success' => true,
                 'message' => 'Belum ada data absensi hari ini',
@@ -170,7 +170,7 @@ class ApiAttendanceController extends Controller
                 'latitude' => 'required|numeric|between:-90,90',
                 'longitude' => 'required|numeric|between:-180,180',
                 'shift_id' => 'required|exists:shifts,id',
-                'foto' => 'required|image|mimes:jpeg,png,jpg|max:2048', // Max 2MB
+                'foto' => 'required|image|mimes:jpeg,png,jpg|max:2048',
             ]);
 
             if ($validator->fails()) {
@@ -184,7 +184,7 @@ class ApiAttendanceController extends Controller
             $user = Auth::user();
             $today = today();
 
-            // Cek apakah sudah ada absensi hari ini
+
             $existingAttendance = Attendance::where('user_id', $user->id)
                 ->where('tanggal_absen', $today)
                 ->first();
@@ -196,7 +196,7 @@ class ApiAttendanceController extends Controller
                 ], 422);
             }
 
-            // Get shift info
+
             $shift = Shift::find($request->shift_id);
             if (!$shift->aktif) {
                 return response()->json([
@@ -205,13 +205,13 @@ class ApiAttendanceController extends Controller
                 ], 422);
             }
 
-            // Upload foto
+
             $fotoPath = $this->uploadFoto($request->file('foto'), $user->id, 'masuk');
 
-            // Waktu sekarang
+
             $jamMasuk = now();
 
-            // Hitung keterlambatan
+
             $jamMasukShift = Carbon::parse($today->format('Y-m-d') . ' ' . $shift->jam_masuk->format('H:i:s'));
             $toleransiMenit = $shift->toleransi_menit;
             $batasToleransi = $jamMasukShift->addMinutes($toleransiMenit);
@@ -224,7 +224,7 @@ class ApiAttendanceController extends Controller
                 $statusAbsen = 'terlambat';
             }
 
-            // Create atau update attendance
+
             $attendanceData = [
                 'user_id' => $user->id,
                 'shift_id' => $request->shift_id,
@@ -233,7 +233,7 @@ class ApiAttendanceController extends Controller
                 'foto_masuk' => $fotoPath,
                 'latitude_masuk' => $request->latitude,
                 'longitude_masuk' => $request->longitude,
-                'status_masuk' => 'menunggu', // Perlu approval admin
+                'status_masuk' => 'menunggu',
                 'status_absen' => $statusAbsen,
                 'menit_terlambat' => $menitTerlambat,
             ];
@@ -245,7 +245,7 @@ class ApiAttendanceController extends Controller
                 $attendance = Attendance::create($attendanceData);
             }
 
-            // Response data
+
             $responseData = [
                 'id' => $attendance->id,
                 'jam_masuk' => $jamMasuk->format('H:i:s'),
@@ -280,7 +280,7 @@ class ApiAttendanceController extends Controller
             $validator = Validator::make($request->all(), [
                 'latitude' => 'required|numeric|between:-90,90',
                 'longitude' => 'required|numeric|between:-180,180',
-                'foto' => 'required|image|mimes:jpeg,png,jpg|max:2048', // Max 2MB
+                'foto' => 'required|image|mimes:jpeg,png,jpg|max:2048',
             ]);
 
             if ($validator->fails()) {
@@ -294,7 +294,7 @@ class ApiAttendanceController extends Controller
             $user = Auth::user();
             $today = today();
 
-            // Cek apakah sudah check in hari ini
+
             $attendance = Attendance::where('user_id', $user->id)
                 ->where('tanggal_absen', $today)
                 ->first();
@@ -313,16 +313,16 @@ class ApiAttendanceController extends Controller
                 ], 422);
             }
 
-            // Upload foto
+
             $fotoPath = $this->uploadFoto($request->file('foto'), $user->id, 'keluar');
 
-            // Waktu sekarang
+
             $jamKeluar = now();
 
-            // Hitung lembur (jika lebih dari jam shift keluar)
+
             $jamKeluarShift = Carbon::parse($today->format('Y-m-d') . ' ' . $attendance->shift->jam_keluar->format('H:i:s'));
 
-            // Handle shift malam (jam keluar < jam masuk)
+
             if ($attendance->shift->jam_keluar < $attendance->shift->jam_masuk) {
                 $jamKeluarShift->addDay();
             }
@@ -332,22 +332,22 @@ class ApiAttendanceController extends Controller
                 $menitLembur = $jamKeluar->diffInMinutes($jamKeluarShift);
             }
 
-            // Update attendance
+
             $attendance->update([
                 'jam_keluar' => $jamKeluar,
                 'foto_keluar' => $fotoPath,
                 'latitude_keluar' => $request->latitude,
                 'longitude_keluar' => $request->longitude,
-                'status_keluar' => 'menunggu', // Perlu approval admin
+                'status_keluar' => 'menunggu',
                 'menit_lembur' => $menitLembur,
             ]);
 
-            // Hitung total jam kerja
+
             $jamMasuk = Carbon::parse($attendance->jam_masuk);
             $totalJamKerja = $jamMasuk->diffInMinutes($jamKeluar);
             $jamKerjaFormatted = floor($totalJamKerja / 60) . ' jam ' . ($totalJamKerja % 60) . ' menit';
 
-            // Response data
+
             $responseData = [
                 'id' => $attendance->id,
                 'jam_keluar' => $jamKeluar->format('H:i:s'),
@@ -382,16 +382,16 @@ class ApiAttendanceController extends Controller
         try {
             $user = Auth::user();
 
-            // Default 30 hari terakhir
+
             $limit = $request->limit ?? 30;
             $page = $request->page ?? 1;
-            $bulan = $request->bulan; // Format: Y-m (contoh: 2024-01)
+            $bulan = $request->bulan;
 
             $query = Attendance::where('user_id', $user->id)
                 ->with('shift')
                 ->orderBy('tanggal_absen', 'desc');
 
-            // Filter by month if provided
+
             if ($bulan) {
                 $date = Carbon::parse($bulan);
                 $query->whereMonth('tanggal_absen', $date->month)
@@ -485,7 +485,7 @@ class ApiAttendanceController extends Controller
                     ->count(),
             ];
 
-            // Calculate attendance rate
+
             $stats['tingkat_kehadiran'] = $stats['total_hari_kerja'] > 0 ?
                 round(($stats['total_hadir'] / $stats['total_hari_kerja']) * 100, 2) : 0;
 
@@ -527,11 +527,11 @@ class ApiAttendanceController extends Controller
     private function getAttendanceStage($attendance)
     {
         if (is_null($attendance->jam_masuk)) {
-            return 'not_started'; // Belum mulai
+            return 'not_started';
         } elseif (is_null($attendance->jam_keluar)) {
-            return 'checked_in'; // Sudah check in, belum check out
+            return 'checked_in';
         } else {
-            return 'completed'; // Sudah selesai
+            return 'completed';
         }
     }
 

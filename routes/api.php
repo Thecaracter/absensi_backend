@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\ApiAttendanceController;
 use App\Http\Controllers\Api\ApiLeaveController;
 use App\Http\Controllers\Api\ApiProfileController;
 use App\Http\Controllers\Api\ApiDashboardController;
+use App\Http\Controllers\Api\ApiScheduleController; // TAMBAHAN BARU
 
 Route::prefix('v1')->group(function () {
 
@@ -33,7 +34,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/me', [ApiAuthController::class, 'me']);
         });
 
-        // Dashboard - BARU!
+        // Dashboard
         Route::prefix('dashboard')->group(function () {
             Route::get('/home', [ApiDashboardController::class, 'home']);
             Route::get('/summary', [ApiDashboardController::class, 'summary']);
@@ -55,6 +56,12 @@ Route::prefix('v1')->group(function () {
             Route::post('/check-out', [ApiAttendanceController::class, 'checkOut']);
             Route::get('/history', [ApiAttendanceController::class, 'history']);
             Route::get('/monthly-stats', [ApiAttendanceController::class, 'monthlyStats']);
+        });
+
+        // SCHEDULE ENDPOINTS - BARU!
+        Route::prefix('schedule')->group(function () {
+            Route::get('/monthly', [ApiScheduleController::class, 'monthly']);
+            Route::get('/weekly', [ApiScheduleController::class, 'weekly']);
         });
 
         // Leave Requests
