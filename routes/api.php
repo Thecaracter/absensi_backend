@@ -6,10 +6,11 @@ use App\Http\Controllers\Api\ApiAuthController;
 use App\Http\Controllers\Api\ApiAttendanceController;
 use App\Http\Controllers\Api\ApiLeaveController;
 use App\Http\Controllers\Api\ApiProfileController;
+use App\Http\Controllers\Api\ApiDashboardController;
 
 Route::prefix('v1')->group(function () {
 
-    // Public routes
+    // Auth routes (public)
     Route::prefix('auth')->group(function () {
         Route::post('/login', [ApiAuthController::class, 'login']);
     });
@@ -23,16 +24,23 @@ Route::prefix('v1')->group(function () {
         ]);
     });
 
-    // Protected routes (require authentication)
+    // Protected routes
     Route::middleware('auth:sanctum')->group(function () {
 
-        // Auth routes
+        // Auth
         Route::prefix('auth')->group(function () {
             Route::post('/logout', [ApiAuthController::class, 'logout']);
             Route::get('/me', [ApiAuthController::class, 'me']);
         });
 
-        // Profile routes
+        // Dashboard - BARU!
+        Route::prefix('dashboard')->group(function () {
+            Route::get('/home', [ApiDashboardController::class, 'home']);
+            Route::get('/summary', [ApiDashboardController::class, 'summary']);
+            Route::get('/quick-actions', [ApiDashboardController::class, 'quickActions']);
+        });
+
+        // Profile
         Route::prefix('profile')->group(function () {
             Route::get('/', [ApiProfileController::class, 'show']);
             Route::put('/', [ApiProfileController::class, 'update']);
@@ -40,32 +48,22 @@ Route::prefix('v1')->group(function () {
             Route::post('/photo', [ApiProfileController::class, 'updatePhoto']);
         });
 
-        // Attendance routes
+        // Attendance
         Route::prefix('attendance')->group(function () {
             Route::get('/today', [ApiAttendanceController::class, 'todayAttendance']);
             Route::post('/check-in', [ApiAttendanceController::class, 'checkIn']);
             Route::post('/check-out', [ApiAttendanceController::class, 'checkOut']);
+            Route::get('/history', [ApiAttendanceController::class, 'history']);
+            Route::get('/monthly-stats', [ApiAttendanceController::class, 'monthlyStats']);
         });
 
-        // Leave Request routes - COMPLETE CRUD + Stats
+        // Leave Requests
         Route::prefix('leave-requests')->group(function () {
-
             Route::get('/', [ApiLeaveController::class, 'index']);
-
-            // POST /api/v1/leave-requests - Create new leave request
             Route::post('/', [ApiLeaveController::class, 'store']);
-
-            // GET /api/v1/leave-requests/stats - Get leave statistics
             Route::get('/stats', [ApiLeaveController::class, 'stats']);
-
-            // GET /api/v1/leave-requests/{id} - Get specific leave request
             Route::get('/{id}', [ApiLeaveController::class, 'show']);
-
-            // PUT/PATCH /api/v1/leave-requests/{id} - Update leave request
             Route::put('/{id}', [ApiLeaveController::class, 'update']);
-            Route::patch('/{id}', [ApiLeaveController::class, 'update']);
-
-            // DELETE /api/v1/leave-requests/{id} - Delete leave request
             Route::delete('/{id}', [ApiLeaveController::class, 'destroy']);
         });
     });
