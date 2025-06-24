@@ -14,7 +14,8 @@ use Carbon\Carbon;
 class ApiAttendanceController extends Controller
 {
     /**
-     * GET ABSENSI HARI INI - VERSION TANPA MODEL JADWAL
+     * GET ABSENSI HARI INI - ALWAYS RETURN TODAY STATUS
+     * SELALU return status absensi hari ini, gak peduli jam berapa
      */
     public function todayAttendance()
     {
@@ -28,7 +29,7 @@ class ApiAttendanceController extends Controller
                 ->with('shift')
                 ->first();
 
-            // Jika sudah ada attendance
+            // JIKA SUDAH ADA ATTENDANCE - return full data dengan status lengkap
             if ($attendance) {
                 $attendanceData = [
                     'id' => $attendance->id,
@@ -54,9 +55,22 @@ class ApiAttendanceController extends Controller
                     'menit_terlambat' => $attendance->menit_terlambat,
                     'menit_lembur' => $attendance->menit_lembur,
                     'catatan_admin' => $attendance->catatan_admin,
+
+                    // STATUS UNTUK UI - INI YANG PENTING!
                     'sudah_check_in' => !is_null($attendance->jam_masuk),
                     'sudah_check_out' => !is_null($attendance->jam_keluar),
-                    'dapat_check_out' => !is_null($attendance->jam_masuk) && is_null($attendance->jam_keluar)
+                    'dapat_check_out' => !is_null($attendance->jam_masuk) && is_null($attendance->jam_keluar),
+
+                    // FORMATTED DATA UNTUK DISPLAY
+                    'status_absen_text' => $this->getStatusAbsenText($attendance->status_absen),
+                    'jam_masuk_formatted' => $attendance->jam_masuk ? Carbon::parse($attendance->jam_masuk)->format('H:i') : 'Belum Check In',
+                    'jam_keluar_formatted' => $attendance->jam_keluar ? Carbon::parse($attendance->jam_keluar)->format('H:i') : 'Belum Check Out',
+                    'durasi_kerja_formatted' => $this->getDurasiKerjaFormatted($attendance),
+                    'terlambat_text' => $attendance->menit_terlambat > 0 ? "Terlambat {$attendance->menit_terlambat} menit" : '',
+
+                    // STATUS COMPLETION
+                    'is_complete' => !is_null($attendance->jam_masuk) && !is_null($attendance->jam_keluar),
+                    'attendance_stage' => $this->getAttendanceStage($attendance),
                 ];
 
                 return response()->json([
@@ -66,8 +80,7 @@ class ApiAttendanceController extends Controller
                 ]);
             }
 
-            // Jika belum ada attendance, ambil shift default dari user (opsional)
-            // Atau buat shift default jika ada kebutuhan khusus
+            // JIKA BELUM ADA ATTENDANCE - return template dengan shift default
             $defaultShift = null;
 
             // Opsi 1: Ambil shift pertama yang aktif sebagai default
@@ -77,37 +90,50 @@ class ApiAttendanceController extends Controller
                 // Jika tidak ada shift aktif, skip
             }
 
-            // Jika ada shift default, buat data template
-            if ($defaultShift) {
-                $attendanceData = [
-                    'id' => null,
-                    'tanggal_absen' => $today->format('Y-m-d'),
-                    'shift' => [
-                        'id' => $defaultShift->id,
-                        'nama' => $defaultShift->nama,
-                        'jam_masuk' => $defaultShift->jam_masuk->format('H:i'),
-                        'jam_keluar' => $defaultShift->jam_keluar->format('H:i'),
-                        'toleransi_menit' => $defaultShift->toleransi_menit
-                    ],
-                    'jam_masuk' => null,
-                    'jam_keluar' => null,
-                    'foto_masuk_url' => null,
-                    'foto_keluar_url' => null,
-                    'latitude_masuk' => null,
-                    'longitude_masuk' => null,
-                    'latitude_keluar' => null,
-                    'longitude_keluar' => null,
-                    'status_absen' => null,
-                    'status_masuk' => null,
-                    'status_keluar' => null,
-                    'menit_terlambat' => null,
-                    'menit_lembur' => null,
-                    'catatan_admin' => null,
-                    'sudah_check_in' => false,
-                    'sudah_check_out' => false,
-                    'dapat_check_out' => false
-                ];
+            // Template untuk yang belum absen
+            $attendanceData = [
+                'id' => null,
+                'tanggal_absen' => $today->format('Y-m-d'),
+                'shift' => $defaultShift ? [
+                    'id' => $defaultShift->id,
+                    'nama' => $defaultShift->nama,
+                    'jam_masuk' => $defaultShift->jam_masuk->format('H:i'),
+                    'jam_keluar' => $defaultShift->jam_keluar->format('H:i'),
+                    'toleransi_menit' => $defaultShift->toleransi_menit
+                ] : null,
+                'jam_masuk' => null,
+                'jam_keluar' => null,
+                'foto_masuk_url' => null,
+                'foto_keluar_url' => null,
+                'latitude_masuk' => null,
+                'longitude_masuk' => null,
+                'latitude_keluar' => null,
+                'longitude_keluar' => null,
+                'status_absen' => null,
+                'status_masuk' => null,
+                'status_keluar' => null,
+                'menit_terlambat' => null,
+                'menit_lembur' => null,
+                'catatan_admin' => null,
 
+                // STATUS UNTUK UI
+                'sudah_check_in' => false,
+                'sudah_check_out' => false,
+                'dapat_check_out' => false,
+
+                // FORMATTED DATA
+                'status_absen_text' => 'Belum Absen',
+                'jam_masuk_formatted' => 'Belum Check In',
+                'jam_keluar_formatted' => 'Belum Check Out',
+                'durasi_kerja_formatted' => null,
+                'terlambat_text' => '',
+
+                // STATUS
+                'is_complete' => false,
+                'attendance_stage' => 'not_started', // not_started, checked_in, completed
+            ];
+
+            if ($defaultShift) {
                 return response()->json([
                     'success' => true,
                     'message' => 'Shift default tersedia untuk hari ini',
@@ -115,11 +141,11 @@ class ApiAttendanceController extends Controller
                 ]);
             }
 
-            // Jika tidak ada attendance dan tidak ada shift default
+            // Jika tidak ada shift default, tetap return template kosong
             return response()->json([
                 'success' => true,
                 'message' => 'Belum ada data absensi hari ini',
-                'data' => null
+                'data' => $attendanceData
             ]);
 
         } catch (\Exception $e) {
@@ -493,5 +519,59 @@ class ApiAttendanceController extends Controller
         $file->move($uploadPath, $fileName);
 
         return 'uploads/attendance/' . $fileName;
+    }
+
+    /**
+     * Helper: Get attendance stage for UI
+     */
+    private function getAttendanceStage($attendance)
+    {
+        if (is_null($attendance->jam_masuk)) {
+            return 'not_started'; // Belum mulai
+        } elseif (is_null($attendance->jam_keluar)) {
+            return 'checked_in'; // Sudah check in, belum check out
+        } else {
+            return 'completed'; // Sudah selesai
+        }
+    }
+
+    /**
+     * Helper: Get status absen text
+     */
+    private function getStatusAbsenText($status)
+    {
+        switch ($status) {
+            case 'hadir':
+                return 'Hadir';
+            case 'terlambat':
+                return 'Terlambat';
+            case 'tidak_hadir':
+                return 'Tidak Hadir';
+            case 'izin':
+                return 'Izin';
+            case 'sakit':
+                return 'Sakit';
+            default:
+                return 'Belum Absen';
+        }
+    }
+
+    /**
+     * Helper: Get durasi kerja formatted
+     */
+    private function getDurasiKerjaFormatted($attendance)
+    {
+        if (is_null($attendance->jam_masuk) || is_null($attendance->jam_keluar)) {
+            return null;
+        }
+
+        $jamMasuk = Carbon::parse($attendance->jam_masuk);
+        $jamKeluar = Carbon::parse($attendance->jam_keluar);
+        $totalMenit = $jamMasuk->diffInMinutes($jamKeluar);
+
+        $jam = floor($totalMenit / 60);
+        $menit = $totalMenit % 60;
+
+        return "{$jam} jam {$menit} menit";
     }
 }
