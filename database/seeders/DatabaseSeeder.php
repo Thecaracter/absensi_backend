@@ -15,6 +15,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             ShiftSeeder::class,
             AdminSeeder::class,
+            LocationSettingSeeder::class,
+            OfficeLocationSeeder::class,
             // AttendanceSeeder::class,
             // LeaveRequestSeeder::class,
         ]);

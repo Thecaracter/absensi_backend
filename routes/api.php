@@ -7,7 +7,8 @@ use App\Http\Controllers\Api\ApiAttendanceController;
 use App\Http\Controllers\Api\ApiLeaveController;
 use App\Http\Controllers\Api\ApiProfileController;
 use App\Http\Controllers\Api\ApiDashboardController;
-use App\Http\Controllers\Api\ApiScheduleController; // TAMBAHAN BARU
+use App\Http\Controllers\Api\ApiScheduleController;
+use App\Http\Controllers\Api\LocationController;
 
 Route::prefix('v1')->group(function () {
 
@@ -72,6 +73,11 @@ Route::prefix('v1')->group(function () {
             Route::get('/{id}', [ApiLeaveController::class, 'show']);
             Route::put('/{id}', [ApiLeaveController::class, 'update']);
             Route::delete('/{id}', [ApiLeaveController::class, 'destroy']);
+        });
+
+        // Location Config untuk Flutter GPS
+        Route::prefix('location')->group(function () {
+            Route::get('/config', [LocationController::class, 'getLocationConfig']);
         });
     });
 });

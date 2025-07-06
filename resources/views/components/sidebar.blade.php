@@ -139,6 +139,21 @@
                         <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
                     @endif
                 </a>
+
+                <!-- Lokasi GPS - TAMBAHAN BARU -->
+                <a href="{{ route('admin.location.index') }}" 
+                   class="nav-link group flex items-center px-3 py-3 text-sm font-medium rounded-xl transition-all duration-300 {{ request()->routeIs('admin.location.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg transform scale-105' : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-700' }}">
+                    <div class="flex items-center justify-center w-10 h-10 mr-3 rounded-lg {{ request()->routeIs('admin.location.*') ? 'bg-white/20' : 'bg-orange-100 text-orange-600 group-hover:bg-orange-200' }} transition-all duration-300">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                    </div>
+                    <span class="flex-1">Lokasi GPS</span>
+                    @if(request()->routeIs('admin.location.*'))
+                        <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                    @endif
+                </a>
             </div>
 
             <!-- Section: Reports -->

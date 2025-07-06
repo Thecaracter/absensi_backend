@@ -3,11 +3,12 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminController;
-use App\Http\Controllers\Admin\KaryawanController;
-use App\Http\Controllers\Admin\AbsensiController;
 use App\Http\Controllers\Admin\IzinController;
 use App\Http\Controllers\Admin\JadwalController;
+use App\Http\Controllers\Admin\AbsensiController;
 use App\Http\Controllers\Admin\LaporanController;
+use App\Http\Controllers\Admin\KaryawanController;
+use App\Http\Controllers\Admin\LocationController;
 
 
 // Redirect root ke login
@@ -173,6 +174,32 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::get('/', [AdminController::class, 'profile'])->name('index');
         Route::put('/update', [AdminController::class, 'updateProfile'])->name('update');
         Route::put('/password', [AdminController::class, 'updatePassword'])->name('password');
+    });
+
+    Route::prefix('location')->name('location.')->group(function () {
+        // Main page
+        Route::get('/', [LocationController::class, 'index'])->name('index');
+
+        // Office Location CRUD
+        Route::post('/store', [LocationController::class, 'store'])->name('store');
+        Route::put('/{location}', [LocationController::class, 'update'])->name('update');
+        Route::delete('/{location}', [LocationController::class, 'destroy'])->name('destroy');
+
+        // JSON endpoint untuk modal edit
+        Route::get('/{location}/json', [LocationController::class, 'getLocationJson'])->name('json');
+
+        // Bulk actions
+        Route::post('/bulk-action', [LocationController::class, 'bulkAction'])->name('bulk-action');
+
+        // Settings update
+        Route::post('/settings', [LocationController::class, 'updateSettings'])->name('settings.update');
+
+        // Import/Export
+        Route::post('/import', [LocationController::class, 'import'])->name('import');
+        Route::post('/export', [LocationController::class, 'export'])->name('export');
+
+        // Test configuration (untuk debugging)
+        Route::get('/test', [LocationController::class, 'testConfiguration'])->name('test');
     });
 });
 
