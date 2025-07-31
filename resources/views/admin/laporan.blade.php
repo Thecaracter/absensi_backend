@@ -84,7 +84,7 @@
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                 </svg>
-                Export
+                Export Print
             </button>
         </div>
     </div>
@@ -350,7 +350,7 @@
                 </div>
             </div>
 
-            <!-- Table Section - UPDATED untuk ringkasan per karyawan -->
+            <!-- Table Section -->
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
@@ -370,25 +370,25 @@
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="flex items-center">
                                     <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center mr-3">
-                                        <span class="text-xs font-medium text-gray-600">{{ substr($emp['karyawan'], 0, 2) }}</span>
+                                        <span class="text-xs font-medium text-gray-600">{{ substr($emp['karyawan'] ?? 'N/A', 0, 2) }}</span>
                                     </div>
                                     <div>
-                                        <div class="text-sm font-medium text-gray-900">{{ $emp['karyawan'] }}</div>
-                                        <div class="text-sm text-gray-500">{{ $emp['id_karyawan'] }}</div>
+                                        <div class="text-sm font-medium text-gray-900">{{ $emp['karyawan'] ?? 'N/A' }}</div>
+                                        <div class="text-sm text-gray-500">{{ $emp['id_karyawan'] ?? 'N/A' }}</div>
                                     </div>
                                 </div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $emp['shift'] }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">{{ $emp['total_hadir'] }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-yellow-600">{{ $emp['total_terlambat'] }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">{{ $emp['total_tidak_hadir'] }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">{{ $emp['total_izin'] }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $emp['shift'] ?? '-' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">{{ $emp['total_hadir'] ?? 0 }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-yellow-600">{{ $emp['total_terlambat'] ?? 0 }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">{{ $emp['total_tidak_hadir'] ?? 0 }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">{{ $emp['total_izin'] ?? 0 }}</td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="flex items-center">
                                     <div class="w-full bg-gray-200 rounded-full h-2 mr-2">
-                                        <div class="bg-green-600 h-2 rounded-full" style="width: {{ $emp['tingkat_kehadiran'] }}%"></div>
+                                        <div class="bg-green-600 h-2 rounded-full" style="width: {{ $emp['tingkat_kehadiran'] ?? 0 }}%"></div>
                                     </div>
-                                    <span class="text-sm font-medium text-gray-900">{{ $emp['tingkat_kehadiran'] }}%</span>
+                                    <span class="text-sm font-medium text-gray-900">{{ $emp['tingkat_kehadiran'] ?? 0 }}%</span>
                                 </div>
                             </td>
                         </tr>
@@ -403,7 +403,6 @@
                     <p class="text-sm text-gray-700">
                         Menampilkan {{ count($absensi) }} karyawan untuk bulan {{ now()->format('F Y') }}
                     </p>
-                    
                 </div>
             </div>
         </div>
@@ -533,10 +532,6 @@
                     <p class="text-sm text-gray-700">
                         Menampilkan {{ count($izin) }} pengajuan izin untuk bulan {{ now()->format('F Y') }}
                     </p>
-                    <button onclick="openDetailModal('izin')" 
-                            class="text-sm text-blue-600 hover:text-blue-800">
-                        Lihat Detail
-                    </button>
                 </div>
             </div>
         </div>
@@ -648,40 +643,30 @@
     </div>
 </div>
 
-<!-- Detail Modals -->
-<div id="detailModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
-    <div class="relative top-10 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white">
-        <div class="mt-3">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-medium text-gray-900" id="detailModalTitle">Detail Data</h3>
-                <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
-            
-            <div id="detailModalContent" class="space-y-4">
-                <!-- Content will be loaded here -->
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Export Modal -->
+<!-- Export Modal PDF -->
 <div id="exportModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
     <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <div class="mt-3">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Export Laporan</h3>
+            <h3 class="text-lg font-medium text-gray-900 mb-4">🖨️ Export Laporan</h3>
             <form id="exportForm" action="{{ route('admin.laporan.export') }}" method="POST">
                 @csrf
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Jenis Laporan</label>
-                        <select name="jenis_laporan" id="export-jenis" required class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                            <option value="absensi">Laporan Absensi</option>
-                            <option value="izin">Laporan Izin</option>
-                            <option value="kinerja">Laporan Kinerja</option>
+                        <select name="jenis_laporan" id="export-jenis" required class="w-full border border-gray-300 rounded-lg px-3 py-2" onchange="toggleUserSelect()">
+                            <option value="semua">📊 Laporan Semua (Absensi + Izin)</option>
+                            <option value="individual">👤 Laporan Individual</option>
+                        </select>
+                    </div>
+                    
+                    <!-- User Selection - Only for Individual Report -->
+                    <div id="user-selection" style="display: none;">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Pilih Karyawan</label>
+                        <select name="user_id" id="export-user" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                            <option value="">-- Pilih Karyawan --</option>
+                            @foreach($karyawan ?? [] as $emp)
+                                <option value="{{ $emp->id }}">{{ $emp->name }} ({{ $emp->id_karyawan }})</option>
+                            @endforeach
                         </select>
                     </div>
                     
@@ -691,12 +676,15 @@
                                class="w-full border border-gray-300 rounded-lg px-3 py-2">
                     </div>
                     
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Format</label>
-                        <select name="format" required class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                            <option value="csv">CSV</option>
-                            <option value="excel">Excel</option>
-                        </select>
+                    <!-- Fixed Format -->
+                    <input type="hidden" name="format" value="pdf">
+                    
+                    <div class="bg-blue-50 p-3 rounded-lg">
+                        <p class="text-sm text-blue-700">
+                            <strong>🖨️ Format:</strong> HTML Print<br>
+                            <strong>🔸 Laporan Semua:</strong> Ringkasan Absensi + Izin semua karyawan<br>
+                            <strong>🔸 Laporan Individual:</strong> Detail lengkap satu karyawan (Absensi + Izin + Kinerja)
+                        </p>
                     </div>
                 </div>
                 
@@ -707,7 +695,7 @@
                     </button>
                     <button type="submit" 
                             class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg">
-                        Export
+                        🖨️ Export Print
                     </button>
                 </div>
             </form>
@@ -789,7 +777,7 @@ function initChart() {
     });
 }
 
-// Load data functions - UPDATED untuk controller baru
+// Load data functions
 function loadAbsensiData() {
     const periode = document.getElementById('absensi-periode').value;
     const userId = document.getElementById('absensi-karyawan').value;
@@ -807,7 +795,6 @@ function loadAbsensiData() {
     if (userId) params.append('user_id', userId);
     if (shiftId) params.append('shift_id', shiftId);
     
-    // UPDATED: Controller langsung return JSON
     fetch(`{{ route('admin.laporan.absensi') }}?${params}`)
         .then(response => response.json())
         .then(data => {
@@ -881,7 +868,7 @@ function loadKinerjaData() {
         });
 }
 
-// Update functions - UPDATED untuk data baru
+// Update functions
 function updateAbsensiStats(stats) {
     document.getElementById('total-hari-kerja').textContent = stats.total_hari_kerja;
     document.getElementById('total-hadir').textContent = stats.total_hadir;
@@ -890,7 +877,6 @@ function updateAbsensiStats(stats) {
     document.getElementById('total-izin').textContent = stats.total_izin;
 }
 
-// UPDATED: updateAbsensiTable untuk data ringkasan per karyawan
 function updateAbsensiTable(data) {
     const tbody = document.getElementById('absensi-table-body');
     
@@ -1051,83 +1037,23 @@ function updateKinerjaCards(data) {
     }).join('');
 }
 
-
-
-function loadDetailData(type) {
-    const content = document.getElementById('detailModalContent');
-    content.innerHTML = '<div class="text-center py-8">Memuat detail data...</div>';
+// Export Modal Functions
+function toggleUserSelect() {
+    const jenisLaporan = document.getElementById('export-jenis').value;
+    const userSelection = document.getElementById('user-selection');
+    const userSelect = document.getElementById('export-user');
     
-    let params = new URLSearchParams();
-    
-    if (type === 'absensi') {
-        params.append('periode', document.getElementById('absensi-periode').value);
-        const userId = document.getElementById('absensi-karyawan').value;
-        const shiftId = document.getElementById('absensi-shift').value;
-        if (userId) params.append('user_id', userId);
-        if (shiftId) params.append('shift_id', shiftId);
-        
-        fetch(`{{ route('admin.laporan.absensi.detail') }}?${params}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    displayDetailTable(data.data, 'absensi');
-                }
-            })
-            .catch(error => {
-                content.innerHTML = '<div class="text-center py-8 text-red-600">Gagal memuat detail data</div>';
-            });
+    if (jenisLaporan === 'individual') {
+        userSelection.style.display = 'block';
+        userSelect.required = true;
+    } else {
+        userSelection.style.display = 'none';
+        userSelect.required = false;
+        userSelect.value = '';
     }
 }
 
-function displayDetailTable(data, type) {
-    const content = document.getElementById('detailModalContent');
-    
-    if (!data || data.length === 0) {
-        content.innerHTML = '<div class="text-center py-8 text-gray-500">Tidak ada data detail</div>';
-        return;
-    }
-    
-    let headers = [];
-    let rows = [];
-    
-    if (type === 'absensi') {
-        headers = ['Karyawan', 'Shift', 'Total Hadir', 'Total Terlambat', 'Total Tidak Hadir', 'Total Izin', 'Tingkat Kehadiran'];
-        rows = data.map(item => [
-            item.karyawan,
-            item.shift,
-            item.total_hadir,
-            item.total_terlambat,
-            item.total_tidak_hadir,
-            item.total_izin,
-            item.tingkat_kehadiran + '%'
-        ]);
-    }
-    
-    const table = `
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        ${headers.map(header => `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">${header}</th>`).join('')}
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    ${rows.map(row => `
-                        <tr>
-                            ${row.map(cell => `<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${cell}</td>`).join('')}
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
-    
-    content.innerHTML = table;
-}
-
-// Export functions
 function exportCurrentReport() {
-    document.getElementById('export-jenis').value = currentTab === 'dashboard' ? 'absensi' : currentTab;
     document.getElementById('exportModal').classList.remove('hidden');
 }
 
@@ -1135,13 +1061,15 @@ function closeExportModal() {
     document.getElementById('exportModal').classList.add('hidden');
 }
 
-// Detail view functions
+// Detail view functions - placeholder
 function viewLeaveDetail(id) {
     console.log('View leave detail:', id);
+    // Implement detail modal if needed
 }
 
 function viewEmployeeDetail(id) {
     console.log('View employee detail:', id);
+    // Implement detail modal if needed
 }
 
 // Initialize on page load
@@ -1151,13 +1079,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Close modals when clicking outside
 window.onclick = function(event) {
-    const modals = ['detailModal', 'exportModal'];
-    modals.forEach(modalId => {
-        const modal = document.getElementById(modalId);
-        if (modal && event.target === modal) {
-            modal.classList.add('hidden');
-        }
-    });
+    const exportModal = document.getElementById('exportModal');
+    if (exportModal && event.target === exportModal) {
+        exportModal.classList.add('hidden');
+    }
 }
 </script>
 @endpush

@@ -17,7 +17,7 @@ class DatabaseSeeder extends Seeder
             AdminSeeder::class,
             LocationSettingSeeder::class,
             OfficeLocationSeeder::class,
-            // AttendanceSeeder::class,
+            AttendanceSeeder::class,
             // LeaveRequestSeeder::class,
         ]);
     }
