@@ -402,8 +402,8 @@ class LaporanController extends Controller
             'izin' => $izinData,
             'kinerja' => $kinerjData,
             'company' => [
-                'name' => config('app.name', 'PT. Attendance System'),
-                'address' => 'Jl. Company Address No. 123, Jakarta',
+                'name' => 'PT. Inna Pharmaceutical Industry',
+                'address' => 'Jl. Barokah No.1 1, RT.1/RW.8, Wanaherang, Kec. Gn. Putri, Kabupaten Bogor, Jawa Barat 16965',
                 'phone' => '(021) 1234-5678',
                 'email' => 'info@company.com'
             ]

@@ -467,7 +467,7 @@
                 <div class="signature-box">
                     <div class="signature-title">Mengetahui & Menyetujui:</div>
                     <div class="signature-info">Manager HRD</div>
-                    <div class="date-info">Jakarta, {{ now()->format('d F Y') }}</div>
+                    <div class="date-info">Bogor, {{ now()->format('d F Y') }}</div>
                     
                     <div class="signature-space"></div>
                     
