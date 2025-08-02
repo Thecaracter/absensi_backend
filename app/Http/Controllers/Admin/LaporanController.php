@@ -334,12 +334,92 @@ class LaporanController extends Controller
     }
 
     /**
-     * Export Laporan - HANYA 2 PDF: SEMUA & INDIVIDUAL
+     * Laporan Kinerja - AJAX/JSON untuk analisis performa karyawan
+     */
+    public function kinerja(Request $request)
+    {
+        // Default bulan ini
+        $bulan = $request->bulan ?? now()->format('Y-m');
+        $periode = Carbon::parse($bulan);
+
+        // Get all active employees with performance metrics
+        $karyawan = User::karyawan()->aktif()->with('shift')
+            ->withCount([
+                'attendances as total_hadir' => function ($q) use ($periode) {
+                    $q->whereMonth('tanggal_absen', $periode->month)
+                        ->whereYear('tanggal_absen', $periode->year)
+                        ->whereIn('status_absen', ['hadir', 'terlambat']);
+                },
+                'attendances as total_terlambat' => function ($q) use ($periode) {
+                    $q->whereMonth('tanggal_absen', $periode->month)
+                        ->whereYear('tanggal_absen', $periode->year)
+                        ->where('status_absen', 'terlambat');
+                },
+                'attendances as total_tidak_hadir' => function ($q) use ($periode) {
+                    $q->whereMonth('tanggal_absen', $periode->month)
+                        ->whereYear('tanggal_absen', $periode->year)
+                        ->where('status_absen', 'tidak_hadir');
+                },
+                'attendances as total_izin' => function ($q) use ($periode) {
+                    $q->whereMonth('tanggal_absen', $periode->month)
+                        ->whereYear('tanggal_absen', $periode->year)
+                        ->where('status_absen', 'izin');
+                }
+            ])
+            ->get()
+            ->map(function ($emp) use ($periode) {
+                $totalHariKerja = $this->getWorkingDaysInMonth($periode);
+                $tingkatKehadiran = $totalHariKerja > 0 ?
+                    round(($emp->total_hadir / $totalHariKerja) * 100, 2) : 0;
+
+                // Rating system
+                if ($tingkatKehadiran >= 95 && $emp->total_terlambat <= 2) {
+                    $rating = 'Excellent';
+                } elseif ($tingkatKehadiran >= 85 && $emp->total_terlambat <= 5) {
+                    $rating = 'Good';
+                } elseif ($tingkatKehadiran >= 75) {
+                    $rating = 'Average';
+                } else {
+                    $rating = 'Poor';
+                }
+
+                return [
+                    'id' => $emp->id,
+                    'name' => $emp->name,
+                    'id_karyawan' => $emp->id_karyawan,
+                    'shift' => $emp->shift ? $emp->shift->nama : '-',
+                    'total_hari_kerja' => $totalHariKerja,
+                    'total_hadir' => $emp->total_hadir,
+                    'total_terlambat' => $emp->total_terlambat,
+                    'total_tidak_hadir' => $emp->total_tidak_hadir,
+                    'total_izin' => $emp->total_izin,
+                    'tingkat_kehadiran' => $tingkatKehadiran,
+                    'rating' => $rating,
+                ];
+            });
+
+        // Overall statistics
+        $overallStats = [
+            'rata_rata_kehadiran' => $karyawan->avg('tingkat_kehadiran'),
+            'karyawan_excellent' => $karyawan->where('rating', 'Excellent')->count(),
+            'karyawan_good' => $karyawan->where('rating', 'Good')->count(),
+            'karyawan_average' => $karyawan->where('rating', 'Average')->count(),
+            'karyawan_poor' => $karyawan->where('rating', 'Poor')->count(),
+        ];
+
+        return response()->json([
+            'overallStats' => $overallStats,
+            'karyawan' => $karyawan
+        ]);
+    }
+
+    /**
+     * Export Laporan - DIPERLUAS JADI 4 JENIS
      */
     public function export(Request $request)
     {
         $request->validate([
-            'jenis_laporan' => 'required|in:semua,individual',
+            'jenis_laporan' => 'required|in:semua,individual,absensi_only,izin_only',
             'periode' => 'required|date_format:Y-m',
             'format' => 'required|in:pdf',
             'user_id' => 'nullable|exists:users,id',
@@ -352,6 +432,10 @@ class LaporanController extends Controller
                 return $this->exportSemuaPdf($request, $periode);
             case 'individual':
                 return $this->exportIndividualPdf($request, $periode);
+            case 'absensi_only':
+                return $this->exportAbsensiOnlyPdf($request, $periode);
+            case 'izin_only':
+                return $this->exportIzinOnlyPdf($request, $periode);
         }
     }
 
@@ -369,6 +453,46 @@ class LaporanController extends Controller
         return view('print.laporan-semua', [
             'periode' => $periode,
             'absensi' => $absensiData,
+            'izin' => $izinData,
+            'company' => [
+                'name' => 'PT. Inna Pharmaceutical Industry',
+                'address' => 'Jl. Barokah No.1 1, RT.1/RW.8, Wanaherang, Kec. Gn. Putri, Kabupaten Bogor, Jawa Barat 16965',
+                'phone' => '(021) 1234-5678',
+                'email' => 'info@company.com'
+            ]
+        ]);
+    }
+
+    /**
+     * Export HANYA Laporan Absensi
+     */
+    public function exportAbsensiOnlyPdf(Request $request, Carbon $periode)
+    {
+        // Get Absensi Data
+        $absensiData = $this->getAbsensiDataForExport($request, $periode);
+
+        return view('print.laporan-absensi-only', [
+            'periode' => $periode,
+            'absensi' => $absensiData,
+            'company' => [
+                'name' => 'PT. Inna Pharmaceutical Industry',
+                'address' => 'Jl. Barokah No.1 1, RT.1/RW.8, Wanaherang, Kec. Gn. Putri, Kabupaten Bogor, Jawa Barat 16965',
+                'phone' => '(021) 1234-5678',
+                'email' => 'info@company.com'
+            ]
+        ]);
+    }
+
+    /**
+     * Export HANYA Laporan Izin
+     */
+    public function exportIzinOnlyPdf(Request $request, Carbon $periode)
+    {
+        // Get Izin Data  
+        $izinData = $this->getIzinDataForExport($request, $periode);
+
+        return view('print.laporan-izin-only', [
+            'periode' => $periode,
             'izin' => $izinData,
             'company' => [
                 'name' => 'PT. Inna Pharmaceutical Industry',
@@ -610,9 +734,21 @@ class LaporanController extends Controller
             'total_hari_izin' => $query->clone()->disetujui()->sum('total_hari'),
         ];
 
+        // Stats per jenis izin untuk export
+        $statsPerJenis = LeaveRequest::whereMonth('tanggal_mulai', $periode->month)
+            ->whereYear('tanggal_mulai', $periode->year)
+            ->when($request->user_id, function ($q) use ($request) {
+                return $q->where('user_id', $request->user_id);
+            })
+            ->selectRaw('jenis_izin, status, COUNT(*) as total, SUM(total_hari) as total_hari')
+            ->groupBy('jenis_izin', 'status')
+            ->get()
+            ->groupBy('jenis_izin');
+
         return [
             'stats' => $stats,
-            'izin' => $izin
+            'izin' => $izin,
+            'stats_per_jenis' => $statsPerJenis
         ];
     }
 

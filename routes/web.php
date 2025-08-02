@@ -135,47 +135,23 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         });
     });
 
-    // Laporan Management
+    // Laporan Management - CLEANED & SIMPLIFIED
     Route::prefix('laporan')->name('laporan.')->group(function () {
-
-        // HANYA SATU VIEW UTAMA
+        // MAIN VIEW - Single Page Application
         Route::get('/', [LaporanController::class, 'index'])->name('index');
 
-        // AJAX routes untuk data tabs (return JSON only)
+        // AJAX ENDPOINTS - Data Only (Return JSON)
         Route::get('/absensi', [LaporanController::class, 'absensi'])->name('absensi');
         Route::get('/izin', [LaporanController::class, 'izin'])->name('izin');
         Route::get('/kinerja', [LaporanController::class, 'kinerja'])->name('kinerja');
-
-        // AJAX Detail routes untuk modal (return JSON)
-        Route::get('/absensi/detail', [LaporanController::class, 'getAbsensiDetail'])->name('absensi.detail');
-        Route::get('/izin/detail', [LaporanController::class, 'getIzinDetail'])->name('izin.detail');
-        Route::get('/kinerja/detail', [LaporanController::class, 'getKinerjaDetail'])->name('kinerja.detail');
-
-        // Dashboard stats untuk AJAX
         Route::get('/dashboard/stats', [LaporanController::class, 'getDashboardStats'])->name('dashboard.stats');
 
-        // MAIN export method (digunakan di view)
+        // UNIFIED EXPORT - Handles 4 Types
         Route::post('/export', [LaporanController::class, 'export'])->name('export');
-
-        // Individual export routes (backup/alternative)
-        Route::post('/absensi/export', [LaporanController::class, 'exportAbsensi'])->name('absensi.export');
-        Route::post('/izin/export', [LaporanController::class, 'exportIzin'])->name('izin.export');
-        Route::post('/kinerja/export', [LaporanController::class, 'exportKinerja'])->name('kinerja.export');
+        // Types: semua, absensi_only, izin_only, individual
     });
 
-    // Settings & Configuration (jika diperlukan)
-    Route::prefix('settings')->name('settings.')->group(function () {
-        Route::get('/', [AdminController::class, 'settings'])->name('index');
-        Route::post('/update', [AdminController::class, 'updateSettings'])->name('update');
-    });
-
-    // Profile Management
-    Route::prefix('profile')->name('profile.')->group(function () {
-        Route::get('/', [AdminController::class, 'profile'])->name('index');
-        Route::put('/update', [AdminController::class, 'updateProfile'])->name('update');
-        Route::put('/password', [AdminController::class, 'updatePassword'])->name('password');
-    });
-
+    // Location Management
     Route::prefix('location')->name('location.')->group(function () {
         // Main page
         Route::get('/', [LocationController::class, 'index'])->name('index');
@@ -200,6 +176,19 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
         // Test configuration (untuk debugging)
         Route::get('/test', [LocationController::class, 'testConfiguration'])->name('test');
+    });
+
+    // Settings & Configuration
+    Route::prefix('settings')->name('settings.')->group(function () {
+        Route::get('/', [AdminController::class, 'settings'])->name('index');
+        Route::post('/update', [AdminController::class, 'updateSettings'])->name('update');
+    });
+
+    // Profile Management
+    Route::prefix('profile')->name('profile.')->group(function () {
+        Route::get('/', [AdminController::class, 'profile'])->name('index');
+        Route::put('/update', [AdminController::class, 'updateProfile'])->name('update');
+        Route::put('/password', [AdminController::class, 'updatePassword'])->name('password');
     });
 });
 

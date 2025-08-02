@@ -202,84 +202,41 @@
         .trend-down { background-color: #fee2e2; color: #991b1b; }
         .trend-same { background-color: #f3f4f6; color: #6b7280; }
         
-        /* Signature Section */
+        /* Simple Signature Section */
         .signature-section {
-            margin-top: 40px;
-            margin-bottom: 20px;
+            margin-top: 50px;
             page-break-inside: avoid;
+            position: relative;
+            min-height: 150px;
         }
         
         .signature-container {
-            display: table;
-            width: 100%;
+            text-align: right;
+            padding-right: 50px;
         }
         
-        .signature-left {
-            display: table-cell;
-            width: 33%;
-            vertical-align: top;
-            padding-right: 15px;
+        .signature-header {
+            font-size: 11px;
+            color: #333;
+            margin-bottom: 60px;
         }
         
-        .signature-center {
-            display: table-cell;
-            width: 34%;
-            vertical-align: top;
-            padding: 0 7px;
+        .signature-location {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 2px;
         }
         
-        .signature-right {
-            display: table-cell;
-            width: 33%;
-            vertical-align: top;
-            padding-left: 15px;
-        }
-        
-        .signature-box {
-            border: 1px solid #ddd;
-            padding: 12px;
-            background-color: #f9fafb;
-            border-radius: 5px;
-            min-height: 120px;
-            text-align: center;
-        }
-        
-        .signature-title {
-            font-weight: bold;
-            font-size: 9px;
-            margin-bottom: 5px;
-            color: #374151;
-        }
-        
-        .signature-info {
-            font-size: 8px;
-            color: #6b7280;
-            margin-bottom: 15px;
-        }
-        
-        .signature-space {
-            height: 50px;
-            border-bottom: 1px solid #333;
-            margin-bottom: 8px;
+        .signature-role {
+            color: #333;
+            font-weight: 500;
         }
         
         .signature-name {
             font-weight: bold;
-            font-size: 8px;
-            text-align: center;
-        }
-        
-        .signature-position {
-            font-size: 7px;
-            color: #6b7280;
-            text-align: center;
-            margin-top: 2px;
-        }
-        
-        .date-info {
-            font-size: 8px;
-            color: #6b7280;
-            margin-bottom: 10px;
+            font-size: 12px;
+            color: #333;
+            text-decoration: underline;
         }
         
         .footer {
@@ -573,59 +530,19 @@
         </table>
     </div>
 
-    <!-- SIGNATURE SECTION -->
+    <!-- SIMPLE SIGNATURE SECTION -->
     <div class="signature-section">
         <div class="signature-container">
-            <div class="signature-left">
-                <div class="signature-box">
-                    <div class="signature-title">Karyawan Yang Bersangkutan</div>
-                    <div class="date-info">{{ now()->format('d F Y') }}</div>
-                    
-                    <div class="signature-space"></div>
-                    
-                    <div class="signature-name">{{ $user->name }}</div>
-                    <div class="signature-position">
-                        NIK: {{ $user->id_karyawan }}<br>
-                        {{ $user->jabatan ?? 'Karyawan' }}
-                    </div>
-                </div>
+            <div class="signature-header">
+                <div class="signature-location">Bogor, {{ now()->format('l, d F Y') }}</div>
+                <div class="signature-role">HRD</div>
             </div>
             
-            <div class="signature-center">
-                <div class="signature-box">
-                    <div class="signature-title">Supervisor / Atasan Langsung</div>
-                    <div class="date-info">{{ now()->format('d F Y') }}</div>
-                    
-                    <div class="signature-space"></div>
-                    
-                    <div class="signature-name">_____________________</div>
-                    <div class="signature-position">
-                        <strong>Nama: ____________________</strong><br>
-                        NIK: ____________________<br>
-                        Supervisor
-                    </div>
-                </div>
-            </div>
-            
-            <div class="signature-right">
-                <div class="signature-box">
-                    <div class="signature-title">Manager HRD</div>
-                    <div class="date-info">{{ now()->format('d F Y') }}</div>
-                    
-                    <div class="signature-space"></div>
-                    
-                    <div class="signature-name">_____________________</div>
-                    <div class="signature-position">
-                        <strong>Nama: ____________________</strong><br>
-                        NIK: ____________________<br>
-                        Manager Human Resource Development
-                    </div>
-                </div>
-            </div>
+            <div class="signature-name">DWI SOLANA</div>
         </div>
         
         <!-- Performance Summary -->
-        <div style="margin-top: 20px; padding: 12px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid #3b82f6;">
+        <div style="margin-top: 40px; padding: 12px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid #3b82f6;">
             <div style="font-weight: bold; font-size: 10px; margin-bottom: 8px;">📈 RINGKASAN EVALUASI KINERJA</div>
             <div style="font-size: 9px; color: #4b5563;">
                 <strong>Periode Evaluasi:</strong> {{ $periode->format('F Y') }} | 

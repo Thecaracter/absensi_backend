@@ -643,7 +643,7 @@
     </div>
 </div>
 
-<!-- Export Modal PDF -->
+<!-- Export Modal PDF - UPDATED -->
 <div id="exportModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
     <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <div class="mt-3">
@@ -654,7 +654,9 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Jenis Laporan</label>
                         <select name="jenis_laporan" id="export-jenis" required class="w-full border border-gray-300 rounded-lg px-3 py-2" onchange="toggleUserSelect()">
-                            <option value="semua">📊 Laporan Semua (Absensi + Izin)</option>
+                            <option value="semua">📊 Laporan Gabungan (Absensi + Izin)</option>
+                            <option value="absensi_only">✅ Laporan Absensi Saja</option>
+                            <option value="izin_only">📋 Laporan Izin Saja</option>
                             <option value="individual">👤 Laporan Individual</option>
                         </select>
                     </div>
@@ -682,8 +684,10 @@
                     <div class="bg-blue-50 p-3 rounded-lg">
                         <p class="text-sm text-blue-700">
                             <strong>🖨️ Format:</strong> HTML Print<br>
-                            <strong>🔸 Laporan Semua:</strong> Ringkasan Absensi + Izin semua karyawan<br>
-                            <strong>🔸 Laporan Individual:</strong> Detail lengkap satu karyawan (Absensi + Izin + Kinerja)
+                            <strong>📊 Laporan Gabungan:</strong> Absensi + Izin dalam satu dokumen<br>
+                            <strong>✅ Laporan Absensi:</strong> Hanya data kehadiran karyawan<br>
+                            <strong>📋 Laporan Izin:</strong> Hanya data izin & cuti karyawan<br>
+                            <strong>👤 Laporan Individual:</strong> Detail lengkap satu karyawan
                         </p>
                     </div>
                 </div>

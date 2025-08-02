@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laporan Kehadiran & Izin - {{ $periode->format('F Y') }}</title>
+    <title>Laporan Absensi - {{ $periode->format('F Y') }}</title>
     <style>
         * {
             margin: 0;
@@ -73,7 +73,7 @@
             margin-bottom: 10px;
             padding: 8px;
             background-color: #f8f9fa;
-            border-left: 4px solid #3b82f6;
+            border-left: 4px solid #10b981;
         }
         
         .stats-grid {
@@ -152,21 +152,6 @@
             border-radius: 4px;
         }
         
-        .status-badge {
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 7px;
-            font-weight: bold;
-        }
-        
-        .status-hadir { background-color: #dcfce7; color: #166534; }
-        .status-terlambat { background-color: #fef3c7; color: #92400e; }
-        .status-tidak-hadir { background-color: #fee2e2; color: #991b1b; }
-        .status-izin { background-color: #dbeafe; color: #1e40af; }
-        .status-menunggu { background-color: #fef3c7; color: #92400e; }
-        .status-disetujui { background-color: #dcfce7; color: #166534; }
-        .status-ditolak { background-color: #fee2e2; color: #991b1b; }
-        
         /* Simple Signature Section */
         .signature-section {
             margin-top: 50px;
@@ -214,10 +199,6 @@
             color: #666;
         }
         
-        .page-break {
-            page-break-before: always;
-        }
-        
         /* Print Styles */
         @media print {
             body { margin: 0; }
@@ -230,7 +211,7 @@
             position: fixed;
             top: 20px;
             right: 20px;
-            background: #3b82f6;
+            background: #10b981;
             color: white;
             border: none;
             padding: 10px 20px;
@@ -240,7 +221,7 @@
         }
         
         .print-btn:hover {
-            background: #2563eb;
+            background: #059669;
         }
     </style>
 </head>
@@ -258,11 +239,11 @@
             {{ $company['address'] }}<br>
             Telp: {{ $company['phone'] }} | Email: {{ $company['email'] }}
         </div>
-        <div class="report-title">LAPORAN KEHADIRAN & IZIN KARYAWAN</div>
+        <div class="report-title">LAPORAN ABSENSI KARYAWAN</div>
         <div class="report-period">Periode: {{ $periode->format('F Y') }}</div>
     </div>
 
-    <!-- SECTION 1: LAPORAN ABSENSI -->
+    <!-- SECTION: LAPORAN ABSENSI -->
     <div class="section">
         <div class="section-title">📊 RINGKASAN ABSENSI KARYAWAN</div>
         
@@ -299,11 +280,11 @@
                     <th width="15%">ID Karyawan</th>
                     <th width="20%">Nama Karyawan</th>
                     <th width="12%">Shift</th>
-                    <th width="8%">Hadir</th>
-                    <th width="8%">Terlambat</th>
-                    <th width="8%">Tidak Hadir</th>
+                    <th width="10%">Hadir</th>
+                    <th width="10%">Terlambat</th>
+                    <th width="10%">Tidak Hadir</th>
                     <th width="8%">Izin</th>
-                    <th width="21%">Tingkat Kehadiran</th>
+                    <th width="15%">Tingkat Kehadiran</th>
                 </tr>
             </thead>
             <tbody>
@@ -332,84 +313,20 @@
                 @endforelse
             </tbody>
         </table>
-    </div>
 
-    <!-- SECTION 2: LAPORAN IZIN -->
-    <div class="section page-break">
-        <div class="section-title">📋 RINGKASAN IZIN & CUTI KARYAWAN</div>
-        
-        <!-- Statistik Izin -->
-        <div class="stats-grid">
-            <div class="stats-row">
-                <div class="stats-cell">
-                    <div class="stats-label">TOTAL PENGAJUAN</div>
-                    <div class="stats-value">{{ $izin['stats']['total_pengajuan'] }}</div>
-                </div>
-                <div class="stats-cell">
-                    <div class="stats-label">DISETUJUI</div>
-                    <div class="stats-value">{{ $izin['stats']['disetujui'] }}</div>
-                </div>
-                <div class="stats-cell">
-                    <div class="stats-label">MENUNGGU</div>
-                    <div class="stats-value">{{ $izin['stats']['menunggu'] }}</div>
-                </div>
-                <div class="stats-cell">
-                    <div class="stats-label">DITOLAK</div>
-                    <div class="stats-value">{{ $izin['stats']['ditolak'] }}</div>
-                </div>
-                <div class="stats-cell">
-                    <div class="stats-label">TOTAL HARI</div>
-                    <div class="stats-value">{{ $izin['stats']['total_hari_izin'] }}</div>
-                </div>
+        <!-- Summary Analisis -->
+        <div style="margin-top: 20px; padding: 12px; background-color: #f0f9ff; border-radius: 5px; border-left: 4px solid #10b981;">
+            <div style="font-weight: bold; font-size: 10px; margin-bottom: 8px;">📈 ANALISIS KEHADIRAN</div>
+            <div style="font-size: 9px; color: #4b5563;">
+                <strong>Total Hari Kerja:</strong> {{ $absensi['stats']['total_hari_kerja'] }} hari | 
+                <strong>Total Kehadiran:</strong> {{ $absensi['stats']['total_hadir'] }} kehadiran | 
+                <strong>Tingkat Keterlambatan:</strong> {{ $absensi['stats']['total_terlambat'] > 0 ? round(($absensi['stats']['total_terlambat'] / $absensi['stats']['total_hadir']) * 100, 1) : 0 }}%
+            </div>
+            <div style="font-size: 8px; color: #6b7280; margin-top: 5px;">
+                Laporan ini mencakup data kehadiran semua karyawan yang aktif untuk periode {{ $periode->format('F Y') }}. 
+                Data diambil dari sistem absensi digital dan telah diverifikasi keakuratannya.
             </div>
         </div>
-
-        <!-- Tabel Izin -->
-        <table class="table">
-            <thead>
-                <tr>
-                    <th width="12%">Tanggal Pengajuan</th>
-                    <th width="18%">Karyawan</th>
-                    <th width="15%">Jenis Izin</th>
-                    <th width="20%">Periode Izin</th>
-                    <th width="8%">Durasi</th>
-                    <th width="12%">Status</th>
-                    <th width="15%">Disetujui Oleh</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($izin['izin'] as $leave)
-                <tr>
-                    <td>{{ $leave->created_at->format('d/m/Y') }}</td>
-                    <td>
-                        <div>{{ $leave->user->name }}</div>
-                        <div style="font-size: 7px; color: #666;">({{ $leave->user->id_karyawan }})</div>
-                    </td>
-                    <td>{{ $leave->getJenisIzinText() }}</td>
-                    <td>{{ $leave->tanggal_mulai->format('d/m/Y') }} - {{ $leave->tanggal_selesai->format('d/m/Y') }}</td>
-                    <td class="text-center">{{ $leave->total_hari }} hari</td>
-                    <td>
-                        @php
-                            $statusClass = match($leave->status) {
-                                'menunggu' => 'status-menunggu',
-                                'disetujui' => 'status-disetujui',
-                                'ditolak' => 'status-ditolak',
-                                default => 'status-menunggu'
-                            };
-                        @endphp
-                        <span class="status-badge {{ $statusClass }}">
-                            {{ $leave->getStatusText() }}
-                        </span>
-                    </td>
-                    <td>{{ $leave->approver ? $leave->approver->name : '-' }}</td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="7" class="text-center">Tidak ada data izin</td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
     </div>
 
     <!-- SIMPLE SIGNATURE SECTION -->
@@ -424,15 +341,15 @@
         </div>
         
         <!-- Note -->
-        <div style="margin-top: 40px; padding: 10px; background-color: #f3f4f6; border-radius: 5px; font-size: 8px; color: #6b7280;">
-            <strong>Catatan:</strong> Laporan ini adalah dokumen resmi yang mencakup data kehadiran dan izin seluruh karyawan untuk periode {{ $periode->format('F Y') }}. 
-            Data telah diverifikasi melalui sistem absensi digital dan dapat dipertanggungjawabkan keakuratannya.
+        <div style="margin-top: 40px; padding: 10px; background-color: #f9fafb; border-radius: 5px; font-size: 8px; color: #6b7280; border-left: 3px solid #10b981;">
+            <strong>Catatan:</strong> Laporan ini khusus memuat data absensi karyawan untuk periode {{ $periode->format('F Y') }}. 
+            Data kehadiran, keterlambatan, dan ketidakhadiran telah diverifikasi melalui sistem absensi digital dan dapat dipertanggungjawabkan keakuratannya.
         </div>
     </div>
 
     <!-- Footer -->
     <div class="footer">
-        Dicetak pada: {{ now()->format('d/m/Y H:i:s') }} | Laporan Kehadiran & Izin - {{ $periode->format('F Y') }}
+        Dicetak pada: {{ now()->format('d/m/Y H:i:s') }} | Laporan Absensi - {{ $periode->format('F Y') }}
     </div>
 </body>
 </html>
